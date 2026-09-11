@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="RudraMart - Fresh groceries, fruits, vegetables, dairy and everyday essentials delivered to your doorstep.">
+    <meta name="keywords" content="grocery store, fresh vegetables, fruits, dairy, online grocery">
+    <meta name="author" content="RudraMart">
+    <meta name="theme-color" content="#16a34a">
+    <title>RudraMart | Fresh Groceries Delivered</title>
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
+    
+    <!-- ✅ SUPABASE CDN ADDED -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- ========================= HEADER ========================= -->
+    <header class="site-header" id="top">
+        <div class="top-bar">
+            <div class="container top-bar-inner">
+                <p>Free delivery on orders above ₹99</p>
+                <div class="top-links">
+                    <button type="button" data-scroll="contact">Help Center</button>
+                    <button type="button" id="themeToggle">🌙 Dark Mode</button>
+                </div>
+            </div>
+        </div>
+
+        <nav class="navbar">
+            <div class="container nav-inner">
+                <a href="#home" class="logo" aria-label="RudraMart Home">
+                    <span class="logo-icon">🛒</span>
+                    <span><strong>Rudra</strong>Mart</span>
+                </a>
+
+                <div class="desktop-search">
+                    <label for="desktopSearch" class="sr-only">Search products</label>
+                    <input type="search" id="desktopSearch" placeholder="Search for fruits, vegetables, milk..." autocomplete="off">
+                    <button type="button" id="desktopSearchBtn">🔍</button>
+                </div>
+
+                <div class="nav-actions">
+                    <!-- ✅ LOGIN BUTTON (Desktop) -->
+                    <button type="button" class="icon-btn" id="loginNavBtn" aria-label="Login">👤</button>
+
+                    <!-- ✅ USER INFO (When logged in) -->
+                    <div class="user-info" id="userInfo" style="display:none; align-items:center; gap:8px;">
+                        <span class="user-avatar">👤</span>
+                        <span id="userName" style="font-weight:600; font-size:0.9rem;"></span>
+                        <button type="button" class="btn btn-text" id="logoutBtn" style="font-size:0.75rem; color:var(--text-light);">Logout</button>
+                    </div>
+
+                    <button type="button" class="icon-btn orders-nav-btn" id="ordersNavBtn" aria-label="My Orders">📦</button>
+                    <button type="button" class="icon-btn wishlist-nav-btn" id="wishlistNavBtn" aria-label="Wishlist">
+                        ♡ <span class="badge" id="wishlistCount">0</span>
+                    </button>
+                    <button type="button" class="icon-btn cart-nav-btn" id="cartNavBtn" aria-label="Shopping cart">
+                        🛒 <span class="badge" id="cartCount">0</span>
+                    </button>
+                    <button type="button" class="menu-toggle" id="menuToggle" aria-label="Open navigation menu" aria-expanded="false">☰</button>
+                </div>
+            </div>
+
+            <!-- ✅ MOBILE MENU - WITH AUTH LINKS -->
+            <div class="mobile-menu" id="mobileMenu">
+                <div class="mobile-search">
+                    <input type="search" id="mobileSearch" placeholder="Search products...">
+                    <button type="button" id="mobileSearchBtn">Search</button>
+                </div>
+
+                <!-- Mobile Auth Links (Logged Out) -->
+                <div id="mobileAuthLinks">
+                    <a href="#" id="mobileLoginLink" data-mobile-link>🔑 Login</a>
+                    <a href="#" id="mobileSignupLink" data-mobile-link>📝 Sign Up</a>
+                </div>
+
+                <!-- Mobile User Info (Logged In) -->
+                <div id="mobileUserInfo" style="display:none; padding: 12px 4px; border-bottom: 1px solid var(--border);">
+                    <span style="font-weight:600;">👤 <span id="mobileUserName">User</span></span>
+                    <a href="#" id="mobileLogoutLink" data-mobile-link style="color:var(--danger);">🚪 Logout</a>
+                </div>
+
+                <a href="#home" data-mobile-link>Home</a>
+                <a href="#categories" data-mobile-link>Categories</a>
+                <a href="#products" data-mobile-link>Products</a>
+                <a href="#about" data-mobile-link>About</a>
+                <a href="#contact" data-mobile-link>Contact</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- ========================= LOGIN / SIGNUP MODAL ========================= -->
+    <div class="modal-overlay" id="authModal" hidden>
+        <div class="modal auth-modal" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <div>
+                    <span class="section-label" id="authModalLabel">ACCOUNT</span>
+                    <h2 id="authModalTitle">Login</h2>
+                </div>
+                <button type="button" class="close-btn" id="closeAuthModal">×</button>
+            </div>
+
+            <!-- Tabs -->
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab active" data-auth-tab="login">Login</button>
+                <button type="button" class="auth-tab" data-auth-tab="signup">Sign Up</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form" novalidate>
+                <div class="form-group">
+                    <label for="loginEmail">Email *</label>
+                    <input type="email" id="loginEmail" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password *</label>
+                    <input type="password" id="loginPassword" placeholder="Enter your password" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary full-width">Login</button>
+                <p class="form-message" id="loginMessage" role="status"></p>
+            </form>
+
+            <!-- Signup Form -->
+            <form id="signupForm" class="auth-form" hidden novalidate>
+                <div class="form-group">
+                    <label for="signupName">Full Name *</label>
+                    <input type="text" id="signupName" placeholder="Enter your full name" required minlength="2">
+                </div>
+                <div class="form-group">
+                    <label for="signupEmail">Email *</label>
+                    <input type="email" id="signupEmail" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupPhone">Phone Number *</label>
+                    <input type="tel" id="signupPhone" placeholder="Enter 10-digit phone" required maxlength="10" pattern="[0-9]{10}">
+                </div>
+                <div class="form-group">
+                    <label for="signupPassword">Password *</label>
+                    <input type="password" id="signupPassword" placeholder="Min 6 characters" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary full-width">Create Account</button>
+                <p class="form-message" id="signupMessage" role="status"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================= MAIN ========================= -->
+    <main>
+
+        <!-- HERO -->
+        <section class="hero" id="home">
+            <div class="container hero-grid">
+                <div class="hero-content">
+                    <span class="eyebrow">🌱 Fresh • Healthy • Affordable</span>
+                    <h1>Fresh groceries, <span>delivered to you.</span></h1>
+                    <p>Shop fresh fruits, vegetables, dairy products, snacks and daily essentials from the comfort of your home.</p>
+                    <div class="hero-buttons">
+                        <button type="button" class="btn btn-primary" data-scroll="products">Shop Now →</button>
+                        <button type="button" class="btn btn-outline" data-scroll="categories">Explore Categories</button>
+                    </div>
+                    <div class="hero-trust">
+                        <div><strong>10K+</strong><span>Happy Customers</span></div>
+                        <div><strong>500+</strong><span>Fresh Products</span></div>
+                        <div><strong>30 Min</strong><span>Fast Delivery</span></div>
+                    </div>
+                </div>
+
+                <div class="hero-visual">
+                    <div class="hero-circle"></div>
+                    <div class="floating-card floating-card-one"><img src="images/avocado.png" alt="Avocado"><span>Farm Fresh</span></div>
+                    <div class="floating-card floating-card-two"><img src="images/delivery.png" alt="Quick Delivery"><span>Quick Delivery</span></div>
+                    <div class="grocery-basket">
+                        <div class="basket-top">
+                            <img src="images/apple1.png" alt="Apple">
+                            <img src="images/Banana1.png" alt="Banana">
+                            <img src="images/broccoli.png" alt="Broccoli">
+                            <img src="images/tomato.png" alt="Tomato">
+                        </div>
+                        <div class="basket-body">
+                            <img src="images/lettuce.png" alt="Lettuce">
+                            <img src="images/milk.png" alt="Milk">
+                            <img src="images/bread1.png" alt="Bread">
+                            <img src="images/eggs.png" alt="Eggs">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FEATURES -->
+        <section class="features">
+            <div class="container feature-grid">
+                <article class="feature-card">
+                    <div class="feature-icon"><img src="images/delivery.png" alt="Fast Delivery"></div>
+                    <div><h3>Fast Delivery</h3><p>Get your groceries quickly.</p></div>
+                </article>
+                <article class="feature-card">
+                    <div class="feature-icon"><img src="images/Fresh Products.png" alt="Fresh Products"></div>
+                    <div><h3>Fresh Products</h3><p>Quality products every day.</p></div>
+                </article>
+                <article class="feature-card">
+                    <div class="feature-icon"><img src="images/secure shopping.png" alt="Secure Shopping"></div>
+                    <div><h3>Secure Shopping</h3><p>Your shopping experience is safe.</p></div>
+                </article>
+                <article class="feature-card">
+                    <div class="feature-icon"><img src="images/best prices.png" alt="Best Prices"></div>
+                    <div><h3>Best Prices</h3><p>Affordable everyday prices.</p></div>
+                </article>
+            </div>
+        </section>
+
+        <!-- POPULAR SNACKS & DRINKS -->
+        <section class="popular-products-section" id="popularProducts">
+            <div class="container">
+                <div class="section-heading popular-heading">
+                    <div>
+                        <span class="section-label">POPULAR PICKS</span>
+                        <h2>🔥 Popular Snacks & Drinks</h2>
+                        <p>Discover your favorite snacks, refreshing drinks and delicious treats.</p>
+                    </div>
+                </div>
+                <div class="popular-filter-buttons">
+                    <button type="button" class="popular-filter-btn active" data-popular-filter="All">All Products</button>
+                    <button type="button" class="popular-filter-btn" data-popular-filter="Snacks">Snacks</button>
+                    <button type="button" class="popular-filter-btn" data-popular-filter="Cold Drinks">Cold Drinks</button>
+                    <button type="button" class="popular-filter-btn" data-popular-filter="Chocolates">Chocolates</button>
+                    <button type="button" class="popular-filter-btn" data-popular-filter="Biscuits">Biscuits</button>
+                    <button type="button" class="popular-filter-btn" data-popular-filter="Juices">Juices</button>
+                </div>
+                <div class="popular-products-wrapper">
+                    <button type="button" class="popular-slider-btn popular-prev" id="popularPrev" aria-label="Previous products">←</button>
+                    <div class="popular-products-grid" id="popularProductsGrid"></div>
+                    <button type="button" class="popular-slider-btn popular-next" id="popularNext" aria-label="Next products">→</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- CATEGORIES -->
+        <section class="section" id="categories">
+            <div class="container">
+                <div class="section-heading">
+                    <div>
+                        <span class="section-label">SHOP BY CATEGORY</span>
+                        <h2>Everything you need</h2>
+                        <p>Discover our wide range of grocery essentials.</p>
+                    </div>
+                </div>
+                <div class="category-grid">
+                    <button type="button" class="category-card" data-category="Fruits">
+                        <span><img src="images/fruits.png" alt="Apple"></span>
+                        <strong>Fruits</strong><small>Fresh & juicy</small>
+                    </button>
+                    <button type="button" class="category-card" data-category="Vegetables">
+                        <span><img src="images/Vegetables.png" alt="Broccoli"></span>
+                        <strong>Vegetables</strong><small>Farm fresh</small>
+                    </button>
+                    <button type="button" class="category-card" data-category="Dairy">
+                        <span><img src="images/Dairy.png" alt="Milk"></span>
+                        <strong>Dairy</strong><small>Milk & more</small>
+                    </button>
+                    <button type="button" class="category-card" data-category="Bakery">
+                        <span><img src="images/Bakery1.png" alt="Bakery"></span>
+                        <strong>Bakery</strong><small>Freshly baked</small>
+                    </button>
+                    <button type="button" class="category-card" data-category="Snacks">
+                        <span><img src="images/snacks.png" alt="Snacks"></span>
+                        <strong>Snacks</strong><small>Tasty treats</small>
+                    </button>
+                    <button type="button" class="category-card" data-category="Beverages">
+                        <span><img src="images/beverages.png" alt="Beverages"></span>
+                        <strong>Beverages</strong><small>Cool & refreshing</small>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- PRODUCTS -->
+        <section class="section products-section" id="products">
+            <div class="container">
+                <div class="section-heading products-heading">
+                    <div>
+                        <span class="section-label">OUR PRODUCTS</span>
+                        <h2>Fresh picks for you</h2>
+                        <p>Choose from our handpicked everyday essentials.</p>
+                    </div>
+                    <button type="button" class="clear-filter" id="clearFilters">Clear Filters</button>
+                </div>
+
+                <div class="product-toolbar">
+                    <div class="filter-buttons" id="filterButtons">
+                        <button type="button" class="filter-btn active" data-filter="All">All</button>
+                        <button type="button" class="filter-btn" data-filter="Fruits">Fruits</button>
+                        <button type="button" class="filter-btn" data-filter="Vegetables">Vegetables</button>
+                        <button type="button" class="filter-btn" data-filter="Dairy">Dairy</button>
+                        <button type="button" class="filter-btn" data-filter="Bakery">Bakery</button>
+                        <button type="button" class="filter-btn" data-filter="Snacks">Snacks</button>
+                        <button type="button" class="filter-btn" data-filter="Beverages">Beverages</button>
+                    </div>
+                    <label class="sort-wrapper">
+                        <span>Sort:</span>
+                        <select id="sortProducts">
+                            <option value="default">Recommended</option>
+                            <option value="price-low">Price: Low to High</option>
+                            <option value="price-high">Price: High to Low</option>
+                            <option value="rating">Highest Rated</option>
+                            <option value="name">Name A-Z</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="search-summary" id="searchSummary"></div>
+                <div class="product-grid" id="productGrid" aria-live="polite"></div>
+                <div class="no-results" id="noResults" hidden>
+                    <div>🔎</div>
+                    <h3>No products found</h3>
+                    <p>Try another search or clear the filters.</p>
+                    <button type="button" class="btn btn-primary" id="resetSearch">Show All Products</button>
+                </div>
+                <div class="load-more-wrapper">
+                    <button type="button" class="btn btn-outline" id="loadMore">Load More</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- PROMO -->
+        <section class="promo-section">
+            <div class="container">
+                <div class="promo-card">
+                    <div>
+                        <span class="section-label">WEEKEND OFFER</span>
+                        <h2>Save up to 30% on fresh groceries</h2>
+                        <p>Stock up on your daily essentials without breaking the bank.</p>
+                        <button type="button" class="btn btn-white" data-scroll="products">Shop Offers →</button>
+                    </div>
+                    <div class="promo-emoji">🛍️</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ABOUT -->
+        <section class="section about-section" id="about">
+            <div class="container about-grid">
+                <div class="about-visual">
+                    <div class="about-main-card"><span>🌱</span><strong>100%</strong><p>Quality Focused</p></div>
+                    <div class="about-small-card">👨‍🌾<span>Trusted Farmers</span></div>
+                </div>
+                <div class="about-content">
+                    <span class="section-label">WHY RUDRA PUR MART?</span>
+                    <h2>Freshness you can trust, every single day.</h2>
+                    <p>We believe everyone deserves access to fresh, affordable and high-quality groceries. RudraMart connects you with carefully selected products for your everyday needs.</p>
+                    <div class="about-list">
+                        <div><span>✓</span><p>Carefully selected products</p></div>
+                        <div><span>✓</span><p>Transparent and affordable pricing</p></div>
+                        <div><span>✓</span><p>Fast and convenient delivery</p></div>
+                        <div><span>✓</span><p>Customer-first service</p></div>
+                    </div>
+                    <button type="button" class="btn btn-primary" data-scroll="contact">Contact Us</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- NEWSLETTER -->
+        <section class="newsletter">
+            <div class="container newsletter-inner">
+                <div>
+                    <span class="section-label">STAY UPDATED</span>
+                    <h2>Get fresh deals in your inbox</h2>
+                    <p>Subscribe for offers, new products and grocery tips.</p>
+                </div>
+                <form id="newsletterForm" class="newsletter-form" novalidate>
+                    <label for="newsletterEmail" class="sr-only">Email address</label>
+                    <input type="email" id="newsletterEmail" placeholder="Enter your email address" required>
+                    <button type="submit" class="btn btn-primary">Subscribe</button>
+                </form>
+                <p class="form-message" id="newsletterMessage" role="status"></p>
+            </div>
+        </section>
+
+        <!-- CONTACT -->
+        <section class="section contact-section" id="contact">
+            <div class="container">
+                <div class="section-heading centered">
+                    <span class="section-label">GET IN TOUCH</span>
+                    <h2>How can we help?</h2>
+                    <p>Have a question? Send us a message.</p>
+                </div>
+                <div class="contact-grid">
+                    <div class="contact-info">
+                        <article><span>📍</span><div><h3>Our Store</h3><p>Main Market, Your City, India</p></div></article>
+                        <article><span>📞</span><div><h3>Call Us</h3><p>+91 7275444693</p></div></article>
+                        <article><span>✉️</span><div><h3>Email</h3><p>dsaurabh299@gmail.com</p></div></article>
+                    </div>
+                    <form class="contact-form" id="contactForm" novalidate>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="name">Full Name *</label>
+                                <input type="text" id="name" name="name" required minlength="2" autocomplete="name">
+                                <small class="error-message" data-error-for="name"></small>
+                            </div>
+                            <div class="form-group">
+                                <label for="email">Email *</label>
+                                <input type="email" id="email" name="email" required autocomplete="email">
+                                <small class="error-message" data-error-for="email"></small>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="message">Message *</label>
+                            <textarea id="message" name="message" rows="5" minlength="10" required></textarea>
+                            <small class="error-message" data-error-for="message"></small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Message</button>
+                        <button type="reset" class="btn btn-text" id="contactReset">Clear</button>
+                        <p class="form-message" id="contactMessage" role="status"></p>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ========================= FOOTER ========================= -->
+    <footer class="footer">
+        <div class="container footer-grid">
+            <div class="footer-brand">
+                <a href="#home" class="logo">
+                    <span class="logo-icon">🛒</span>
+                    <span><strong>Rudrapur</strong>Mart</span>
+                </a>
+                <p>Fresh groceries and everyday essentials, delivered with care.</p>
+                <div class="social-links">
+                    <a href="#contact" aria-label="Facebook">f</a>
+                    <a href="#contact" aria-label="Instagram">◎</a>
+                    <a href="#contact" aria-label="Twitter">𝕏</a>
+                </div>
+            </div>
+            <div class="footer-column">
+                <h3>Quick Links</h3>
+                <a href="#home">Home</a>
+                <a href="#products">Products</a>
+                <a href="#categories">Categories</a>
+                <a href="#about">About Us</a>
+            </div>
+            <div class="footer-column">
+                <h3>Categories</h3>
+                <a href="#products">Fruits</a>
+                <a href="#products">Vegetables</a>
+                <a href="#products">Dairy</a>
+                <a href="#products">Bakery</a>
+            </div>
+            <div class="footer-column">
+                <h3>Customer Care</h3>
+                <a href="#contact">Contact Us</a>
+                <a href="#contact">Delivery Info</a>
+                <a href="#contact">Privacy Policy</a>
+                <a href="#contact">Terms & Conditions</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="container footer-bottom-inner">
+                <p>© <span id="currentYear"></span> RudraMart. All rights reserved.</p>
+                <p>Made with ❤️ for fresh living.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ========================= CART DRAWER ========================= -->
+    <div class="overlay" id="cartOverlay" hidden></div>
+    <aside class="cart-drawer" id="cartDrawer" aria-label="Shopping cart" aria-hidden="true">
+        <div class="drawer-header">
+            <div><span class="section-label">YOUR CART</span><h2>Shopping Cart</h2></div>
+            <button type="button" class="close-btn" id="closeCart" aria-label="Close cart">×</button>
+        </div>
+        <div class="cart-items" id="cartItems"></div>
+        <div class="cart-empty" id="cartEmpty">
+            <div>🛒</div><h3>Your cart is empty</h3>
+            <p>Add some fresh products to get started.</p>
+            <button type="button" class="btn btn-primary" data-close-cart>Continue Shopping</button>
+        </div>
+        <div class="cart-footer" id="cartFooter">
+            <div class="cart-line"><span>Subtotal</span><strong id="cartSubtotal">₹0</strong></div>
+            <div class="cart-line"><span>Delivery</span><strong id="cartDelivery">₹0</strong></div>
+            <div class="cart-line total"><span>Total</span><strong id="cartTotal">₹0</strong></div>
+            <button type="button" class="btn btn-primary checkout-btn" id="checkoutBtn">Proceed to Checkout</button>
+        </div>
+    </aside>
+
+    <!-- ========================= WISHLIST DRAWER ========================= -->
+    <div class="overlay" id="wishlistOverlay" hidden></div>
+    <aside class="wishlist-drawer" id="wishlistDrawer" aria-hidden="true">
+        <div class="drawer-header">
+            <div><span class="section-label">SAVED ITEMS</span><h2>Wishlist</h2></div>
+            <button type="button" class="close-btn" id="closeWishlist">×</button>
+        </div>
+        <div class="wishlist-items" id="wishlistItems"></div>
+        <div class="wishlist-empty" id="wishlistEmpty">
+            <div>♡</div><h3>Your wishlist is empty</h3>
+            <p>Save products you want to buy later.</p>
+        </div>
+    </aside>
+
+    <!-- ========================= ORDERS DRAWER ========================= -->
+    <div class="overlay" id="ordersOverlay" hidden></div>
+    <aside class="orders-drawer" id="ordersDrawer" aria-label="My Orders" aria-hidden="true">
+        <div class="drawer-header">
+            <div><span class="section-label">ORDER HISTORY</span><h2>My Orders</h2></div>
+            <button type="button" class="close-btn" id="closeOrders" aria-label="Close orders">×</button>
+        </div>
+        <div class="orders-items" id="ordersItems"></div>
+        <div class="orders-empty" id="ordersEmpty">
+            <div>📦</div><h3>No orders yet</h3>
+            <p>Your completed orders will appear here.</p>
+            <button type="button" class="btn btn-primary" id="shopFromOrders">Start Shopping</button>
+        </div>
+    </aside>
+
+    <!-- ========================= CHECKOUT MODAL ========================= -->
+    <div class="modal-overlay" id="checkoutModal" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="checkoutTitle">
+            <div class="modal-header">
+                <div><span class="section-label">CHECKOUT</span><h2 id="checkoutTitle">Complete Your Order</h2></div>
+                <button type="button" class="close-btn" id="closeCheckout">×</button>
+            </div>
+            <form id="checkoutForm" novalidate>
+                <div class="form-group">
+                    <label for="checkoutName">Full Name *</label>
+                    <input type="text" id="checkoutName" name="checkoutName" placeholder="Enter your full name" autocomplete="name">
+                </div>
+                <div class="form-group">
+                    <label for="checkoutPhone">Phone Number *</label>
+                    <input type="tel" id="checkoutPhone" name="checkoutPhone" placeholder="Enter 10-digit phone number" maxlength="10" autocomplete="tel">
+                </div>
+                <div class="form-group">
+                    <label for="checkoutAddress">Delivery Address *</label>
+                    <textarea id="checkoutAddress" name="checkoutAddress" placeholder="Enter your delivery address" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="paymentMethod">Payment Method</label>
+                    <select id="paymentMethod">
+                        <option value="cod">Cash on Delivery</option>
+                        <option value="upi">UPI</option>
+                        <option value="card">Credit / Debit Card</option>
+                    </select>
+                </div>
+                <div class="checkout-summary"><span>Order Total</span><strong id="checkoutTotal">₹0</strong></div>
+                <button type="submit" class="btn btn-primary full-width">Place Order</button>
+                <p class="form-message" id="checkoutMessage" role="status"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================= ORDER TRACKING MODAL ========================= -->
+    <div class="modal-overlay" id="orderTrackingModal" hidden>
+        <div class="modal order-tracking-modal" role="dialog" aria-modal="true" aria-labelledby="trackingTitle">
+            <div class="modal-header">
+                <div><span class="section-label">ORDER TRACKING</span><h2 id="trackingTitle">Track Your Order</h2></div>
+                <button type="button" class="close-btn" id="closeOrderTracking">×</button>
+            </div>
+            <div class="tracking-content">
+                <div class="tracking-order-number">Order <strong id="trackingOrderNumber">#FM00000000</strong></div>
+                <div class="tracking-eta"><span>Estimated delivery</span><strong id="trackingExpectedTime">--</strong></div>
+                <div class="tracking-countdown" id="trackingCountdown">15 min</div>
+                <div class="tracking-steps">
+                    <div class="tracking-step active" data-tracking-step="confirmed"><span>✓</span><div><strong>Order Confirmed</strong><small>Your order has been received.</small></div></div>
+                    <div class="tracking-step" data-tracking-step="preparing"><span>✓</span><div><strong>Preparing</strong><small>Your groceries are being prepared.</small></div></div>
+                    <div class="tracking-step" data-tracking-step="out"><span>🚚</span><div><strong>Out for Delivery</strong><small>Your order is on the way.</small></div></div>
+                    <div class="tracking-step" data-tracking-step="delivered"><span>✓</span><div><strong>Delivered</strong><small>Enjoy your fresh groceries!</small></div></div>
+                </div>
+                <button type="button" class="btn btn-primary full-width" id="continueShoppingAfterOrder">Continue Shopping</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================= TOAST ========================= -->
+    <div class="toast" id="toast" role="status" aria-live="polite">
+        <span id="toastIcon">✓</span>
+        <span id="toastMessage">Done</span>
+    </div>
+
+    <!-- BACK TO TOP -->
+    <button type="button" class="back-to-top" id="backToTop" aria-label="Back to top">↑</button>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
