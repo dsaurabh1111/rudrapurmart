@@ -2682,13 +2682,15 @@ body.dark-theme .popular-product-image {
 .login-gate {
     position: fixed;
     inset: 0;
-    z-index: 9999;
+    z-index: 99999;
     display: flex;
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
     padding: 20px;
-    transition: opacity 0.4s ease, visibility 0.4s ease;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.35s ease, visibility 0.35s ease;
 }
 
 .login-gate.hidden {
@@ -2705,12 +2707,6 @@ body.dark-theme .popular-product-image {
     width: 100%;
     text-align: center;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
-    animation: fadeUp 0.5s ease;
-}
-
-@keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
 }
 
 .login-gate-logo {
@@ -2754,10 +2750,6 @@ body.dark-theme .popular-product-image {
     margin-bottom: 0 !important;
     font-size: 0.82rem !important;
     color: #94a3b8 !important;
-}
-
-body.login-gate-active > *:not(#loginGate) {
-    display: none !important;
 }
 
 body.login-gate-active { overflow: hidden; }

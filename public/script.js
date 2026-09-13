@@ -708,7 +708,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const phoneInput = document.getElementById("checkoutPhone");
                 const addressInput = document.getElementById("checkoutAddress");
                 const paymentInput = document.getElementById("paymentMethod");
-                const emailInput = document.getElementById("checkoutEmail"); // may be null
+                const emailInput = document.getElementById("checkoutEmail");
 
                 const name = nameInput?.value?.trim() || "";
                 const phone = (phoneInput?.value || "").replace(/[^\d]/g, "").slice(0, 10);
@@ -804,7 +804,6 @@ document.addEventListener("DOMContentLoaded", () => {
        MY ORDERS
     ===================================================== */
 
-    // Assign DOM elements to the previously declared variables
     ordersDrawer = document.getElementById("ordersDrawer");
     ordersOverlay = document.getElementById("ordersOverlay");
     ordersItems = document.getElementById("ordersItems");
@@ -902,7 +901,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (ordersOverlay) ordersOverlay.hidden = false;
         document.body.style.overflow = "hidden";
 
-        // Add Clear History button directly
         const oldBtn = document.getElementById('clearOrdersBtn');
         if (oldBtn) oldBtn.remove();
 
@@ -948,7 +946,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        // =========== Load orders ===========
         if (ordersItems) {
             ordersItems.innerHTML = '<div style="padding:40px;text-align:center;color:#647069;">Loading orders...</div>';
             ordersItems.hidden = false;
@@ -1067,7 +1064,6 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Populate form
         const nameInput = document.getElementById('profileName');
         const emailInput = document.getElementById('profileEmail');
         const phoneInput = document.getElementById('profilePhone');
@@ -1088,18 +1084,19 @@ document.addEventListener("DOMContentLoaded", () => {
         if (displayName) displayName.textContent = name || 'User';
         if (displayEmail) displayEmail.textContent = email || '';
 
-        // Load profile image
-        if (currentCustomer?.profile_image && avatarImg) {
-            avatarImg.src = currentCustomer.profile_image;
+        // ✅ Load profile image with localStorage fallback
+        const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E👤%3C/text%3E%3C/svg%3E";
+        const cachedImage = currentUser ? localStorage.getItem('rudramart_avatar_' + currentUser.id) : null;
+        const profileImage = currentCustomer?.profile_image || cachedImage;
+        if (avatarImg) {
+            avatarImg.src = profileImage || DEFAULT_AVATAR;
         }
 
-        // Open drawer
         profileDrawer.classList.add('open');
         profileDrawer.setAttribute('aria-hidden', 'false');
         if (profileOverlay) profileOverlay.hidden = false;
         document.body.style.overflow = 'hidden';
 
-        // Clear message
         const msg = document.getElementById('profileMessage');
         if (msg) {
             msg.textContent = '';
@@ -1121,11 +1118,9 @@ document.addEventListener("DOMContentLoaded", () => {
         else document.body.style.overflow = '';
     }
 
-    // Attach listeners
     document.getElementById('profileOverlay')?.addEventListener('click', closeProfile);
     document.getElementById('closeProfile')?.addEventListener('click', closeProfile);
 
-    // Click on user info in navbar opens profile
     document.getElementById('userInfo')?.addEventListener('click', (e) => {
         if (e.target.closest('#logoutBtn')) return;
         openProfile();
@@ -1156,7 +1151,6 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             showToast('Uploading image...', '⏳');
 
-            // Preview
             const reader = new FileReader();
             reader.onload = (ev) => {
                 const avatarImg = document.getElementById('profileAvatarImg');
@@ -1164,7 +1158,6 @@ document.addEventListener("DOMContentLoaded", () => {
             };
             reader.readAsDataURL(file);
 
-            // Upload to Supabase Storage
             const fileExt = file.name.split('.').pop();
             const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`;
 
@@ -1174,14 +1167,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (uploadError) throw uploadError;
 
-            // Get public URL
             const { data: urlData } = supabaseClient.storage
                 .from('avatars')
                 .getPublicUrl(fileName);
 
             const publicUrl = urlData.publicUrl;
 
-            // Save to customers table
             const { error: updateError } = await supabaseClient
                 .from('customers')
                 .update({ profile_image: publicUrl })
@@ -1191,7 +1182,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (currentCustomer) currentCustomer.profile_image = publicUrl;
 
-            // Update navbar avatar
+            // ✅ Cache image locally so it persists across auth refresh
+            if (currentUser) {
+                localStorage.setItem('rudramart_avatar_' + currentUser.id, publicUrl);
+            }
+
             const navAvatar = document.querySelector('.user-avatar');
             if (navAvatar) {
                 navAvatar.innerHTML = `<img src="${publicUrl}" class="user-avatar-img" alt="Profile" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">`;
@@ -1263,7 +1258,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 currentCustomer.address = address;
             }
 
-            // Update UI
             const displayName = document.getElementById('profileDisplayName');
             const userNameEl = document.getElementById('userName');
             const mobileUserName = document.getElementById('mobileUserName');
@@ -1928,7 +1922,6 @@ async function signUp(email, password, name, phone) {
         throw new Error("Account creation failed.");
     }
 
-    // Create customer profile
     const { error: customerError } = await supabaseClient
         .from("customers")
         .insert({
@@ -1974,14 +1967,12 @@ async function signIn(email, password) {
 
     currentUser = data.user;
 
-    // Get customer information
     let { data: customer } = await supabaseClient
         .from("customers")
         .select("*")
         .eq("auth_user_id", data.user.id)
         .maybeSingle();
 
-    // Fallback: fetch by email
     if (!customer) {
         const { data: customerByEmail } = await supabaseClient
             .from("customers")
@@ -1996,6 +1987,12 @@ async function signIn(email, password) {
         email: data.user.email || "",
         phone: ""
     };
+
+    // ✅ Restore cached avatar
+    const cachedAvatar = localStorage.getItem('rudramart_avatar_' + data.user.id);
+    if (cachedAvatar && !currentCustomer.profile_image) {
+        currentCustomer.profile_image = cachedAvatar;
+    }
 
     return {
         user: currentUser,
@@ -2070,6 +2067,12 @@ async function initAuth() {
                 email: session.user.email || "",
                 phone: ""
             };
+
+            // ✅ Restore cached avatar for existing session
+            const cachedAvatar = localStorage.getItem('rudramart_avatar_' + session.user.id);
+            if (cachedAvatar && !currentCustomer.profile_image) {
+                currentCustomer.profile_image = cachedAvatar;
+            }
         }
 
         updateAuthUI();
@@ -2079,7 +2082,7 @@ async function initAuth() {
 }
 
 // ============================================================
-// AUTH UI  ← ✅ LOGIN GATE LOGIC ADDED HERE
+// AUTH UI
 // ============================================================
 
 function updateAuthUI() {
@@ -2192,33 +2195,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Initialize Supabase
     if (!initializeSupabase()) return;
 
-    // LOGIN BUTTON
     document.getElementById("loginNavBtn")?.addEventListener("click", () => {
         openAuthModal("login");
     });
 
-    // MOBILE LOGIN
     document.getElementById("mobileLoginLink")?.addEventListener("click", event => {
         event.preventDefault();
         openAuthModal("login");
         if (window.RudraMartCloseMobileMenu) window.RudraMartCloseMobileMenu();
     });
 
-    // MOBILE SIGNUP
     document.getElementById("mobileSignupLink")?.addEventListener("click", event => {
         event.preventDefault();
         openAuthModal("signup");
         if (window.RudraMartCloseMobileMenu) window.RudraMartCloseMobileMenu();
     });
 
-    // MOBILE LOGOUT
     document.getElementById("mobileLogoutLink")?.addEventListener("click", async event => {
         event.preventDefault();
         await signOut();
         if (window.RudraMartCloseMobileMenu) window.RudraMartCloseMobileMenu();
     });
 
-    // CLOSE AUTH MODAL
     document.getElementById("closeAuthModal")?.addEventListener("click", closeAuthModalFn);
 
     const authModal = document.getElementById("authModal");
@@ -2228,7 +2226,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // AUTH TABS
     document.querySelectorAll(".auth-tab").forEach(tab => {
         tab.addEventListener("click", () => {
             openAuthModal(tab.dataset.authTab);
@@ -2392,6 +2389,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                     email: session.user.email || "",
                     phone: ""
                 };
+
+                // ✅ Restore cached avatar
+                const cachedAvatar = localStorage.getItem('rudramart_avatar_' + session.user.id);
+                if (cachedAvatar && !currentCustomer.profile_image) {
+                    currentCustomer.profile_image = cachedAvatar;
+                }
             } catch (error) {
                 console.warn("Customer profile fetch failed:", error);
             }
