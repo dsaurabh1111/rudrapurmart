@@ -196,7 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     /* =====================================================
-       ✅ FIX: Declare late-initialized variables here (hoisted)
+       ✅ Declare late-initialized variables here (hoisted)
     ===================================================== */
     let ordersDrawer = null;
     let ordersOverlay = null;
@@ -620,7 +620,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.addEventListener("click", event => {
         if (event.target.closest("[data-close-cart]")) closeCart();
-
     });
 
     /* =====================================================
@@ -1042,126 +1041,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-        // Show loading
-        if (ordersItems) {
-            ordersItems.innerHTML = '<div style="padding: 40px; text-align: center; color: #647069; font-size: 0.9rem;">Loading your orders...</div>';
-            ordersItems.hidden = false;
-        }
-        if (ordersEmpty) ordersEmpty.hidden = true;
-
-        // Use customer phone OR prompt
-        let phone = (currentCustomer && currentCustomer.phone) ? currentCustomer.phone : '';
-
-        if (!phone) {
-            phone = prompt('Enter your 10-digit phone number to see your orders:');
-        }
-
-        if (!phone) {
-            if (ordersItems) ordersItems.innerHTML = '';
-            if (ordersItems) ordersItems.hidden = true;
-            if (ordersEmpty) ordersEmpty.hidden = false;
-            return;
-        }
-
-        // Clean phone (keep only digits)
-        phone = phone.toString().replace(/[^\d]/g, '').slice(0, 10);
-
-        if (phone.length !== 10) {
-            if (ordersItems) ordersItems.innerHTML = '<div style="padding: 40px; text-align: center; color: #ef4444;">Please enter a valid 10-digit phone number.</div>';
-            return;
-        }
-
-        // Fetch orders from backend
-        try {
-            const response = await fetch(`${API_BASE_URL}/orders-phone`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: phone })
-            });
-
-            const result = await response.json();
-
-            if (!response.ok || !result.success) {
-                throw new Error(result.error || 'Failed to fetch orders');
-            }
-
-            const orders = (result.orders || []).map(order => ({
-                id: order.order_number,
-                status: order.status,
-                items: order.items || [],
-                total: order.total,
-                paymentMethod: order.payment_method,
-                createdAt: order.created_at,
-                estimatedDelivery: order.estimated_delivery,
-            }));
-
-            // Render orders
-            if (!orders.length) {
-                if (ordersItems) ordersItems.innerHTML = '';
-                if (ordersItems) ordersItems.hidden = true;
-                if (ordersEmpty) {
-                    ordersEmpty.hidden = false;
-                    const h3 = ordersEmpty.querySelector('h3');
-                    if (h3) h3.textContent = 'No orders found for this phone';
-                }
-                return;
-            }
-
-            if (ordersItems) {
-                ordersItems.hidden = false;
-                ordersItems.innerHTML = orders.map(order => `
-                    <article class="order-card" data-order-id="${escapeHtml(order.id)}">
-                        <div class="order-card-header">
-                            <div>
-                                <span class="section-label">ORDER</span>
-                                <h3>#${escapeHtml(order.id)}</h3>
-                            </div>
-                            <span class="order-status">${escapeHtml(order.status || "Confirmed")}</span>
-                        </div>
-                        <div class="order-date">${formatOrderDate(order.createdAt)}</div>
-                        <div class="order-products">
-                            ${(order.items || []).map(item => `
-                                <div class="order-product">
-                                    <div class="order-product-image">
-                                        ${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" loading="lazy">` : "📦"}
-                                    </div>
-                                    <div class="order-product-info">
-                                        <strong>${escapeHtml(item.name)}</strong>
-                                        <small>${item.quantity} × ${formatPrice(item.price)}</small>
-                                    </div>
-                                    <strong>${formatPrice(item.lineTotal || item.price * item.quantity)}</strong>
-                                </div>
-                            `).join("")}
-                        </div>
-                        <div class="order-card-footer">
-                            <div>
-                                <small>Payment</small>
-                                <strong>${escapeHtml(getPaymentName(order.paymentMethod))}</strong>
-                            </div>
-                            <div>
-                                <small>Total</small>
-                                <strong>${formatPrice(order.total)}</strong>
-                            </div>
-                        </div>
-                        <div class="order-card-actions">
-                            <button type="button" class="btn btn-primary" data-order-action="track" data-order-id="${escapeHtml(order.id)}">
-                                Track Order
-                            </button>
-                        </div>
-                    </article>
-                `).join("");
-            }
-
-            if (ordersEmpty) ordersEmpty.hidden = true;
-
-        } catch (error) {
-            console.error('Fetch orders error:', error);
-            if (ordersItems) {
-                ordersItems.hidden = false;
-                ordersItems.innerHTML = '<div style="padding: 40px; text-align: center; color: #ef4444;">Failed to load orders. Please try again.</div>';
-            }
-        }
-    })
     async function fetchMyOrdersFromBackend(phone) {
         try {
             const response = await fetch(`${API_BASE_URL}/orders-phone`, {
@@ -1253,6 +1132,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </article>
         `).join("");
     }
+
     function closeOrders() {
         if (!ordersDrawer) return;
         ordersDrawer.classList.remove("open");
@@ -1260,7 +1140,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (ordersOverlay) ordersOverlay.hidden = true;
         restoreBodyScroll();
     }
-    
+
     // =====================================================
     // CLEAR ORDER HISTORY FEATURE
     // =====================================================
@@ -1332,6 +1212,7 @@ document.addEventListener("DOMContentLoaded", () => {
             drawerHeader.appendChild(btn);
         }
     }
+
     /* =====================================================
        PROFILE DRAWER
     ===================================================== */
@@ -2133,20 +2014,21 @@ document.addEventListener("DOMContentLoaded", () => {
     updatePopularSliderButtons();
 
     // ============================================================
-// AUTH BRIDGE - Make required functions available to Supabase Auth
-// ============================================================
+    // AUTH BRIDGE - Make required functions available to Supabase Auth
+    // ============================================================
 
-window.RudraMartShowToast = showToast;
-window.RudraMartCloseMobileMenu = closeMobileMenu;
+    window.RudraMartShowToast = showToast;
+    window.RudraMartCloseMobileMenu = closeMobileMenu;
 
     console.log("RudraMart loaded successfully.");
 
+}); // ← End of first DOMContentLoaded
 
 // ============================================================
 // SUPABASE AUTHENTICATION
 // ============================================================
 
-const SUPABASE_URL = '	https://wmkzpblyjxedfrlarstm.supabase.co';
+const SUPABASE_URL = 'https://wmkzpblyjxedfrlarstm.supabase.co';
 
 const SUPABASE_ANON_KEY =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indta3pwYmx5anhlZGZybGFyc3RtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NTMyNjgsImV4cCI6MjEwNDEyOTI2OH0.27riS3RhL-HY5d2ZDe3UqKhUmKWDe8u3uiujzL6Xa9E";
@@ -2155,85 +2037,63 @@ let supabaseClient = null;
 let currentUser = null;
 let currentCustomer = null;
 
-
 // ============================================================
 // INITIALIZE SUPABASE
 // ============================================================
 
 function initializeSupabase() {
-
     if (!window.supabase) {
         console.error("Supabase library not loaded.");
         return false;
     }
 
     try {
-
         supabaseClient = window.supabase.createClient(
             SUPABASE_URL,
             SUPABASE_ANON_KEY
         );
-
         console.log("Supabase initialized successfully.");
-
         return true;
-
     } catch (error) {
-
         console.error("Supabase initialization failed:", error);
-
         return false;
     }
 }
-
 
 // ============================================================
 // SHOW AUTH MESSAGE
 // ============================================================
 
 function showAuthMessage(elementId, message, type = "error") {
-
     const element = document.getElementById(elementId);
-
     if (!element) return;
-
     element.textContent = message;
     element.className = `form-message ${type}`;
 }
-
 
 // ============================================================
 // SIGN UP
 // ============================================================
 
 async function signUp(email, password, name, phone) {
-
     if (!supabaseClient) {
         throw new Error("Authentication service is not available.");
     }
 
-    const {
-        data,
-        error
-    } = await supabaseClient.auth.signUp({
+    const { data, error } = await supabaseClient.auth.signUp({
         email: email,
         password: password
     });
 
-    if (error) {
-        throw error;
-    }
+    if (error) throw error;
 
     const user = data.user;
-
     if (!user) {
         throw new Error("Account creation failed.");
     }
 
     // Create customer profile
-    const {
-        error: customerError
-    } = await supabaseClient
+    const { error: customerError } = await supabaseClient
         .from("customers")
         .insert({
             auth_user_id: user.id,
@@ -2244,8 +2104,6 @@ async function signUp(email, password, name, phone) {
 
     if (customerError) {
         console.error("Customer profile error:", customerError);
-
-        // If profile insert fails, account was still created
         throw new Error(
             customerError.message ||
             "Account created but customer profile could not be saved."
@@ -2254,36 +2112,25 @@ async function signUp(email, password, name, phone) {
 
     return {
         user: user,
-        customer: {
-            email: email,
-            name: name,
-            phone: phone
-        }
+        customer: { email, name, phone }
     };
 }
-
 
 // ============================================================
 // SIGN IN
 // ============================================================
 
 async function signIn(email, password) {
-
     if (!supabaseClient) {
         throw new Error("Authentication service is not available.");
     }
 
-    const {
-        data,
-        error
-    } = await supabaseClient.auth.signInWithPassword({
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
         email: email,
         password: password
     });
 
-    if (error) {
-        throw error;
-    }
+    if (error) throw error;
 
     if (!data.user) {
         throw new Error("Login failed.");
@@ -2292,26 +2139,20 @@ async function signIn(email, password) {
     currentUser = data.user;
 
     // Get customer information
- let { data: customer } = await supabaseClient
-    .from("customers")
-    .select("*")
-    .eq("auth_user_id", data.user.id)
-    .maybeSingle();
-
-// Fallback: fetch by email
-if (!customer) {
-    const { data: customerByEmail } = await supabaseClient
+    let { data: customer } = await supabaseClient
         .from("customers")
         .select("*")
-        .eq("email", data.user.email)
+        .eq("auth_user_id", data.user.id)
         .maybeSingle();
-    customer = customerByEmail;
-}
-    if (customerError) {
-        console.warn(
-            "Could not load customer profile:",
-            customerError
-        );
+
+    // Fallback: fetch by email
+    if (!customer) {
+        const { data: customerByEmail } = await supabaseClient
+            .from("customers")
+            .select("*")
+            .eq("email", data.user.email)
+            .maybeSingle();
+        customer = customerByEmail;
     }
 
     currentCustomer = customer || {
@@ -2326,21 +2167,15 @@ if (!customer) {
     };
 }
 
-
 // ============================================================
 // SIGN OUT
 // ============================================================
 
 async function signOut() {
-
     if (!supabaseClient) return;
 
     try {
-
-        const {
-            error
-        } = await supabaseClient.auth.signOut();
-
+        const { error } = await supabaseClient.auth.signOut();
         if (error) throw error;
 
         currentUser = null;
@@ -2349,36 +2184,24 @@ async function signOut() {
         updateAuthUI();
 
         if (window.RudraMartShowToast) {
-            window.RudraMartShowToast(
-                "Logged out successfully",
-                "👋"
-            );
+            window.RudraMartShowToast("Logged out successfully", "👋");
         }
-
     } catch (error) {
-
         console.error("Logout error:", error);
-
         if (window.RudraMartShowToast) {
-            window.RudraMartShowToast(
-                "Logout failed",
-                "❌"
-            );
+            window.RudraMartShowToast("Logout failed", "❌");
         }
     }
 }
-
 
 // ============================================================
 // LOAD CURRENT SESSION
 // ============================================================
 
 async function initAuth() {
-
     if (!supabaseClient) return;
 
     try {
-
         const { data, error } = await supabaseClient.auth.getSession();
 
         if (error) {
@@ -2389,17 +2212,14 @@ async function initAuth() {
         const session = data?.session;
 
         if (session?.user) {
-
             currentUser = session.user;
 
-            // ✅ Try to fetch customer by auth_user_id
             let { data: customer } = await supabaseClient
                 .from("customers")
                 .select("*")
                 .eq("auth_user_id", session.user.id)
                 .maybeSingle();
 
-            // ✅ Fallback: fetch by email
             if (!customer) {
                 const { data: customerByEmail } = await supabaseClient
                     .from("customers")
@@ -2417,702 +2237,314 @@ async function initAuth() {
         }
 
         updateAuthUI();
-
     } catch (error) {
         console.error("Authentication init failed:", error);
     }
 }
-
 
 // ============================================================
 // AUTH UI
 // ============================================================
 
 function updateAuthUI() {
-
-    const loginBtn =
-        document.getElementById("loginNavBtn");
-
-    const userInfo =
-        document.getElementById("userInfo");
-
-    const userName =
-        document.getElementById("userName");
-
-    const mobileAuthLinks =
-        document.getElementById("mobileAuthLinks");
-
-    const mobileUserInfo =
-        document.getElementById("mobileUserInfo");
-
-    const mobileUserName =
-        document.getElementById("mobileUserName");
-
+    const loginBtn = document.getElementById("loginNavBtn");
+    const userInfo = document.getElementById("userInfo");
+    const userName = document.getElementById("userName");
+    const mobileAuthLinks = document.getElementById("mobileAuthLinks");
+    const mobileUserInfo = document.getElementById("mobileUserInfo");
+    const mobileUserName = document.getElementById("mobileUserName");
 
     if (currentUser) {
-
-        if (loginBtn) {
-            loginBtn.style.display = "none";
-        }
+        if (loginBtn) loginBtn.style.display = "none";
 
         if (userInfo) {
-
             userInfo.style.display = "flex";
-
             if (userName) {
                 userName.textContent =
-                    currentCustomer?.name ||
-                    currentUser.email ||
-                    "User";
+                    currentCustomer?.name || currentUser.email || "User";
             }
         }
 
-        if (mobileAuthLinks) {
-            mobileAuthLinks.style.display = "none";
-        }
+        if (mobileAuthLinks) mobileAuthLinks.style.display = "none";
 
         if (mobileUserInfo) {
-
             mobileUserInfo.style.display = "block";
-
             if (mobileUserName) {
                 mobileUserName.textContent =
-                    currentCustomer?.name ||
-                    currentUser.email ||
-                    "User";
+                    currentCustomer?.name || currentUser.email || "User";
             }
         }
-
     } else {
-
-        if (loginBtn) {
-            loginBtn.style.display = "inline-flex";
-        }
-
-        if (userInfo) {
-            userInfo.style.display = "none";
-        }
-
-        if (mobileAuthLinks) {
-            mobileAuthLinks.style.display = "block";
-        }
-
-        if (mobileUserInfo) {
-            mobileUserInfo.style.display = "none";
-        }
+        if (loginBtn) loginBtn.style.display = "inline-flex";
+        if (userInfo) userInfo.style.display = "none";
+        if (mobileAuthLinks) mobileAuthLinks.style.display = "block";
+        if (mobileUserInfo) mobileUserInfo.style.display = "none";
     }
 }
-
 
 // ============================================================
 // AUTH MODAL
 // ============================================================
 
 function openAuthModal(tab = "login") {
-
-    const authModal =
-        document.getElementById("authModal");
-
+    const authModal = document.getElementById("authModal");
     if (!authModal) {
         console.error("authModal not found in HTML.");
         return;
     }
 
     authModal.hidden = false;
-
     document.body.style.overflow = "hidden";
 
-
     document.querySelectorAll(".auth-tab").forEach(tabButton => {
-
-        tabButton.classList.toggle(
-            "active",
-            tabButton.dataset.authTab === tab
-        );
-
+        tabButton.classList.toggle("active", tabButton.dataset.authTab === tab);
     });
 
+    const loginForm = document.getElementById("loginForm");
+    const signupForm = document.getElementById("signupForm");
 
-    const loginForm =
-        document.getElementById("loginForm");
+    if (loginForm) loginForm.hidden = tab !== "login";
+    if (signupForm) signupForm.hidden = tab !== "signup";
 
-    const signupForm =
-        document.getElementById("signupForm");
-
-    if (loginForm) {
-        loginForm.hidden = tab !== "login";
-    }
-
-    if (signupForm) {
-        signupForm.hidden = tab !== "signup";
-    }
-
-
-    const title =
-        document.getElementById("authModalTitle");
-
+    const title = document.getElementById("authModalTitle");
     if (title) {
-        title.textContent =
-            tab === "login" ? "Login" : "Create Account";
+        title.textContent = tab === "login" ? "Login" : "Create Account";
     }
 
-
-    showAuthMessage(
-        "loginMessage",
-        "",
-        ""
-    );
-
-    showAuthMessage(
-        "signupMessage",
-        "",
-        ""
-    );
+    showAuthMessage("loginMessage", "", "");
+    showAuthMessage("signupMessage", "", "");
 }
-
 
 // ============================================================
 // CLOSE AUTH MODAL
 // ============================================================
 
 function closeAuthModalFn() {
-
-    const authModal =
-        document.getElementById("authModal");
-
+    const authModal = document.getElementById("authModal");
     if (!authModal) return;
-
     authModal.hidden = true;
-
     document.body.style.overflow = "";
 }
-
 
 // ============================================================
 // AUTH EVENT INITIALIZATION
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", async () => {
-
     // Initialize Supabase
-    if (!initializeSupabase()) {
-        return;
-    }
+    if (!initializeSupabase()) return;
 
-
-    // ========================================================
     // LOGIN BUTTON
-    // ========================================================
+    document.getElementById("loginNavBtn")?.addEventListener("click", () => {
+        openAuthModal("login");
+    });
 
-    document
-        .getElementById("loginNavBtn")
-        ?.addEventListener("click", () => {
-
-            openAuthModal("login");
-
-        });
-
-
-    // ========================================================
     // MOBILE LOGIN
-    // ========================================================
+    document.getElementById("mobileLoginLink")?.addEventListener("click", event => {
+        event.preventDefault();
+        openAuthModal("login");
+        if (window.RudraMartCloseMobileMenu) window.RudraMartCloseMobileMenu();
+    });
 
-    document
-        .getElementById("mobileLoginLink")
-        ?.addEventListener("click", event => {
-
-            event.preventDefault();
-
-            openAuthModal("login");
-
-            if (window.RudraMartCloseMobileMenu) {
-                window.RudraMartCloseMobileMenu();
-            }
-
-        });
-
-
-    // ========================================================
     // MOBILE SIGNUP
-    // ========================================================
+    document.getElementById("mobileSignupLink")?.addEventListener("click", event => {
+        event.preventDefault();
+        openAuthModal("signup");
+        if (window.RudraMartCloseMobileMenu) window.RudraMartCloseMobileMenu();
+    });
 
-    document
-        .getElementById("mobileSignupLink")
-        ?.addEventListener("click", event => {
-
-            event.preventDefault();
-
-            openAuthModal("signup");
-
-            if (window.RudraMartCloseMobileMenu) {
-                window.RudraMartCloseMobileMenu();
-            }
-
-        });
-
-
-    // ========================================================
     // MOBILE LOGOUT
-    // ========================================================
+    document.getElementById("mobileLogoutLink")?.addEventListener("click", async event => {
+        event.preventDefault();
+        await signOut();
+        if (window.RudraMartCloseMobileMenu) window.RudraMartCloseMobileMenu();
+    });
 
-    document
-        .getElementById("mobileLogoutLink")
-        ?.addEventListener("click", async event => {
-
-            event.preventDefault();
-
-            await signOut();
-
-            if (window.RudraMartCloseMobileMenu) {
-                window.RudraMartCloseMobileMenu();
-            }
-
-        });
-
-
-    // ========================================================
     // CLOSE AUTH MODAL
-    // ========================================================
+    document.getElementById("closeAuthModal")?.addEventListener("click", closeAuthModalFn);
 
-    document
-        .getElementById("closeAuthModal")
-        ?.addEventListener(
-            "click",
-            closeAuthModalFn
-        );
-
-
-    const authModal =
-        document.getElementById("authModal");
-
+    const authModal = document.getElementById("authModal");
     if (authModal) {
-
         authModal.addEventListener("click", event => {
-
-            if (event.target === authModal) {
-                closeAuthModalFn();
-            }
-
+            if (event.target === authModal) closeAuthModalFn();
         });
-
     }
 
-
-    // ========================================================
     // AUTH TABS
-    // ========================================================
-
-    document
-        .querySelectorAll(".auth-tab")
-        .forEach(tab => {
-
-            tab.addEventListener("click", () => {
-
-                openAuthModal(
-                    tab.dataset.authTab
-                );
-
-            });
-
+    document.querySelectorAll(".auth-tab").forEach(tab => {
+        tab.addEventListener("click", () => {
+            openAuthModal(tab.dataset.authTab);
         });
+    });
 
-
-    // ========================================================
     // LOGIN FORM
-    // ========================================================
+    document.getElementById("loginForm")?.addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.target;
 
-    document
-        .getElementById("loginForm")
-        ?.addEventListener("submit", async event => {
+        const email = document.getElementById("loginEmail")?.value.trim() || "";
+        const password = document.getElementById("loginPassword")?.value || "";
+        const button = form.querySelector(".btn-primary");
 
-            event.preventDefault();
+        if (!email || !password) {
+            showAuthMessage("loginMessage", "Please enter email and password.", "error");
+            return;
+        }
 
-            const form = event.target;
+        if (button) {
+            button.disabled = true;
+            button.textContent = "Logging in...";
+        }
 
-            const email =
-                document
-                    .getElementById("loginEmail")
-                    ?.value
-                    .trim() || "";
+        try {
+            const result = await signIn(email, password);
+            currentUser = result.user;
+            currentCustomer = result.customer;
 
-            const password =
-                document
-                    .getElementById("loginPassword")
-                    ?.value || "";
+            updateAuthUI();
+            closeAuthModalFn();
 
-            const button =
-                form.querySelector(".btn-primary");
-
-
-            if (!email || !password) {
-
-                showAuthMessage(
-                    "loginMessage",
-                    "Please enter email and password.",
-                    "error"
+            if (window.RudraMartShowToast) {
+                window.RudraMartShowToast(
+                    `Welcome ${currentCustomer?.name || "User"}!`,
+                    
                 );
-
-                return;
             }
 
-
-            if (button) {
-
-                button.disabled = true;
-
-                button.textContent =
-                    "Logging in...";
-
-            }
-
-
-            try {
-
-                const result =
-                    await signIn(
-                        email,
-                        password
-                    );
-
-                currentUser =
-                    result.user;
-
-                currentCustomer =
-                    result.customer;
-
-
-                updateAuthUI();
-
-                closeAuthModalFn();
-
-
-                if (window.RudraMartShowToast) {
-
-                    window.RudraMartShowToast(
-                        `Welcome ${currentCustomer?.name || "User"}!`,
-                        "👋"
-                    );
-
-                }
-
-
-                form.reset();
-
-
-                showAuthMessage(
-                    "loginMessage",
-                    "",
-                    ""
-                );
-
-            } catch (error) {
-
-                console.error(
-                    "Login error:",
-                    error
-                );
-
-                showAuthMessage(
-                    "loginMessage",
-                    error.message ||
-                    "Login failed. Please check your email and password.",
-                    "error"
-                );
-
-            } finally {
-
-                if (button) {
-
-                    button.disabled = false;
-
-                    button.textContent =
-                        "Login";
-
-                }
-
-            }
-
-        });
-
-
-    // ========================================================
-    // SIGNUP FORM
-    // ========================================================
-
-    document
-        .getElementById("signupForm")
-        ?.addEventListener("submit", async event => {
-
-            event.preventDefault();
-
-            const form = event.target;
-
-
-            const name =
-                document
-                    .getElementById("signupName")
-                    ?.value
-                    .trim() || "";
-
-            const email =
-                document
-                    .getElementById("signupEmail")
-                    ?.value
-                    .trim() || "";
-
-            const phone =
-                document
-                    .getElementById("signupPhone")
-                    ?.value
-                    .trim() || "";
-
-            const password =
-                document
-                    .getElementById("signupPassword")
-                    ?.value || "";
-
-
-            const button =
-                form.querySelector(".btn-primary");
-
-
-            // Validation
-
-            if (name.length < 2) {
-
-                showAuthMessage(
-                    "signupMessage",
-                    "Please enter your full name.",
-                    "error"
-                );
-
-                return;
-            }
-
-
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-
-                showAuthMessage(
-                    "signupMessage",
-                    "Please enter a valid email address.",
-                    "error"
-                );
-
-                return;
-            }
-
-
-            if (!/^\d{10}$/.test(phone)) {
-
-                showAuthMessage(
-                    "signupMessage",
-                    "Please enter a valid 10-digit phone number.",
-                    "error"
-                );
-
-                return;
-            }
-
-
-            if (password.length < 6) {
-
-                showAuthMessage(
-                    "signupMessage",
-                    "Password must be at least 6 characters.",
-                    "error"
-                );
-
-                return;
-            }
-
-
-            if (button) {
-
-                button.disabled = true;
-
-                button.textContent =
-                    "Creating account...";
-
-            }
-
-
-            try {
-
-                const result =
-                    await signUp(
-                        email,
-                        password,
-                        name,
-                        phone
-                    );
-
-
-                currentUser =
-                    result.user;
-
-                currentCustomer =
-                    result.customer;
-
-
-                updateAuthUI();
-
-
-                // Supabase email confirmation check
-                const session =
-                    (await supabaseClient.auth.getSession())
-                        ?.data
-                        ?.session;
-
-
-                closeAuthModalFn();
-
-                form.reset();
-
-
-                if (!session) {
-
-                    if (window.RudraMartShowToast) {
-
-                        window.RudraMartShowToast(
-                            "Account created! Please verify your email.",
-                            "📧"
-                        );
-
-                    }
-
-                } else {
-
-                    if (window.RudraMartShowToast) {
-
-                        window.RudraMartShowToast(
-                            "Account created successfully! 🎉",
-                            "🎉"
-                        );
-
-                    }
-
-                }
-
-
-            } catch (error) {
-
-                console.error(
-                    "Signup error:",
-                    error
-                );
-
-                showAuthMessage(
-                    "signupMessage",
-                    error.message ||
-                    "Signup failed. Email may already exist.",
-                    "error"
-                );
-
-            } finally {
-
-                if (button) {
-
-                    button.disabled = false;
-
-                    button.textContent =
-                        "Create Account";
-
-                }
-
-            }
-
-        });
-
-
-    // ========================================================
-    // DESKTOP LOGOUT
-    // ========================================================
-
-    document
-        .getElementById("logoutBtn")
-        ?.addEventListener(
-            "click",
-            signOut
-        );
-
-
-    // ========================================================
-    // SUPABASE AUTH STATE LISTENER
-    // ========================================================
-
-    supabaseClient.auth.onAuthStateChange(
-        async (event, session) => {
-
-            console.log(
-                "Auth state:",
-                event
+            form.reset();
+            showAuthMessage("loginMessage", "", "");
+        } catch (error) {
+            console.error("Login error:", error);
+            showAuthMessage(
+                "loginMessage",
+                error.message || "Login failed. Please check your email and password.",
+                "error"
             );
-
-
-            if (session?.user) {
-
-                currentUser =
-                    session.user;
-
-                // Avoid unnecessary duplicate UI calls
-                try {
-
-let { data: customer } = await supabaseClient
-    .from("customers")
-    .select("*")
-    .eq("auth_user_id", session.user.id)
-    .maybeSingle();
-
-// Fallback: fetch by email
-if (!customer) {
-    const { data: customerByEmail } = await supabaseClient
-        .from("customers")
-        .select("*")
-        .eq("email", session.user.email)
-        .maybeSingle();
-    customer = customerByEmail;
-}
-                    currentCustomer =
-                        customer || {
-                            name:
-                                session.user.email
-                                    ?.split("@")[0] ||
-                                "User",
-
-                            email:
-                                session.user.email ||
-                                "",
-
-                            phone: ""
-                        };
-
-                } catch (error) {
-
-                    console.warn(
-                        "Customer profile fetch failed:",
-                        error
-                    );
-
-                }
-
-            } else {
-
-                currentUser = null;
-                currentCustomer = null;
-
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = "Login";
             }
+        }
+    });
 
+    // SIGNUP FORM
+    document.getElementById("signupForm")?.addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.target;
+
+        const name = document.getElementById("signupName")?.value.trim() || "";
+        const email = document.getElementById("signupEmail")?.value.trim() || "";
+        const phone = document.getElementById("signupPhone")?.value.trim() || "";
+        const password = document.getElementById("signupPassword")?.value || "";
+        const button = form.querySelector(".btn-primary");
+
+        if (name.length < 2) {
+            showAuthMessage("signupMessage", "Please enter your full name.", "error");
+            return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            showAuthMessage("signupMessage", "Please enter a valid email address.", "error");
+            return;
+        }
+        if (!/^\d{10}$/.test(phone)) {
+            showAuthMessage("signupMessage", "Please enter a valid 10-digit phone number.", "error");
+            return;
+        }
+        if (password.length < 6) {
+            showAuthMessage("signupMessage", "Password must be at least 6 characters.", "error");
+            return;
+        }
+
+        if (button) {
+            button.disabled = true;
+            button.textContent = "Creating account...";
+        }
+
+        try {
+            const result = await signUp(email, password, name, phone);
+            currentUser = result.user;
+            currentCustomer = result.customer;
 
             updateAuthUI();
 
+            const session = (await supabaseClient.auth.getSession())?.data?.session;
+
+            closeAuthModalFn();
+            form.reset();
+
+            if (!session) {
+                if (window.RudraMartShowToast) {
+                    window.RudraMartShowToast(
+                        "Account created! Please verify your email.",
+                        
+                    );
+                }
+            } else {
+                if (window.RudraMartShowToast) {
+                    window.RudraMartShowToast(
+                        "Account created successfully! ",
+                        
+                    );
+                }
+            }
+        } catch (error) {
+            console.error("Signup error:", error);
+            showAuthMessage(
+                "signupMessage",
+                error.message || "Signup failed. Email may already exist.",
+                "error"
+            );
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = "Create Account";
+            }
         }
-    );
+    });
 
+    // DESKTOP LOGOUT
+    document.getElementById("logoutBtn")?.addEventListener("click", signOut);
 
-    // ========================================================
+    // SUPABASE AUTH STATE LISTENER
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        console.log("Auth state:", event);
+
+        if (session?.user) {
+            currentUser = session.user;
+
+            try {
+                let { data: customer } = await supabaseClient
+                    .from("customers")
+                    .select("*")
+                    .eq("auth_user_id", session.user.id)
+                    .maybeSingle();
+
+                if (!customer) {
+                    const { data: customerByEmail } = await supabaseClient
+                        .from("customers")
+                        .select("*")
+                        .eq("email", session.user.email)
+                        .maybeSingle();
+                    customer = customerByEmail;
+                }
+
+                currentCustomer = customer || {
+                    name: session.user.email?.split("@")[0] || "User",
+                    email: session.user.email || "",
+                    phone: ""
+                };
+            } catch (error) {
+                console.warn("Customer profile fetch failed:", error);
+            }
+        } else {
+            currentUser = null;
+            currentCustomer = null;
+        }
+
+        updateAuthUI();
+    });
+
     // LOAD EXISTING SESSION
-    // ========================================================
-
     await initAuth();
-
 });
