@@ -892,38 +892,56 @@ document.addEventListener("DOMContentLoaded", () => {
         `).join("");
     }
 
-       async function openOrders() {
+    async function openOrders() {
         closeCart();
         closeWishlist();
 
-        // Open drawer first (show loading state)
         if (!ordersDrawer) return;
         ordersDrawer.classList.add("open");
         ordersDrawer.setAttribute("aria-hidden", "false");
         if (ordersOverlay) ordersOverlay.hidden = false;
         document.body.style.overflow = "hidden";
 
-        // ✅ If user is logged in, fetch from backend
-        if (currentUser && currentCustomer && currentCustomer.phone) {
-            await fetchMyOrdersFromBackend(currentCustomer.phone);
-        } else if (currentUser && !currentCustomer?.phone) {
-            // Logged in but no phone in profile
-            showOrdersMessage("Please add your phone number to your profile to see orders.");
-        } else {
-            // Not logged in
-            showOrdersMessage("Please login to see your orders.");
+        // Show loading
+        if (ordersItems) {
+            ordersItems.innerHTML = '<div style="padding: 40px; text-align: center; color: #647069; font-size: 0.9rem;">Loading your orders...</div>';
+            ordersItems.hidden = false;
         }
+        if (ordersEmpty) ordersEmpty.hidden = true;
+
+        // Determine phone: prefer logged-in customer's phone, else ask
+        let phone = currentCustomer?.phone || '';
+
+        // If no phone from login, prompt user
+        if (!phone) {
+            phone = prompt('Please enter your 10-digit phone number to see your orders:');
+            if (!phone) {
+                if (ordersItems) ordersItems.innerHTML = '';
+                if (ordersItems) ordersItems.hidden = true;
+                if (ordersEmpty) ordersEmpty.hidden = false;
+                return;
+            }
+        }
+
+        // Clean phone (digits only)
+        phone = phone.replace(/[^\d]/g, '').slice(0, 10);
+
+        if (!/^\d{10}$/.test(phone)) {
+            if (ordersItems) ordersItems.innerHTML = '';
+            if (ordersItems) ordersItems.hidden = true;
+            if (ordersEmpty) {
+                ordersEmpty.hidden = false;
+                const h3 = ordersEmpty.querySelector('h3');
+                if (h3) h3.textContent = 'Invalid phone number';
+            }
+            return;
+        }
+
+        // Fetch from backend
+        await fetchMyOrdersFromBackend(phone);
     }
 
-    // ✅ New helper: fetch orders from backend
     async function fetchMyOrdersFromBackend(phone) {
-        if (!ordersItems || !ordersEmpty) return;
-
-        // Show loading
-        ordersItems.innerHTML = '<div style="padding: 40px; text-align: center; color: #647069;">Loading your orders...</div>';
-        ordersItems.hidden = false;
-        ordersEmpty.hidden = true;
-
         try {
             const response = await fetch(`${API_BASE_URL}/orders-phone`, {
                 method: 'POST',
@@ -939,7 +957,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const orders = (result.orders || []).map(order => ({
                 id: order.order_number,
-                orderNumber: order.order_number,
                 status: order.status,
                 items: order.items || [],
                 total: order.total,
@@ -952,21 +969,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         } catch (error) {
             console.error('Fetch orders error:', error);
-            showOrdersMessage("Could not load your orders. Please try again.");
+            if (ordersItems) {
+                ordersItems.innerHTML = '<div style="padding: 40px; text-align: center; color: #ef4444; font-size: 0.9rem;">Could not load orders. Please try again.</div>';
+            }
         }
     }
 
-    // ✅ New helper: show message in orders drawer
-    function showOrdersMessage(message) {
-        if (!ordersItems || !ordersEmpty) return;
-        ordersItems.innerHTML = '';
-        ordersItems.hidden = true;
-        ordersEmpty.hidden = false;
-        const emptyContent = ordersEmpty.querySelector('h3');
-        if (emptyContent) emptyContent.textContent = message;
-    }
-
-    // ✅ New helper: render orders fetched from backend
     function renderFetchedOrders(orders) {
         if (!ordersItems || !ordersEmpty) return;
 
@@ -974,8 +982,8 @@ document.addEventListener("DOMContentLoaded", () => {
             ordersItems.innerHTML = '';
             ordersItems.hidden = true;
             ordersEmpty.hidden = false;
-            const emptyContent = ordersEmpty.querySelector('h3');
-            if (emptyContent) emptyContent.textContent = 'No orders yet';
+            const h3 = ordersEmpty.querySelector('h3');
+            if (h3) h3.textContent = 'No orders yet';
             return;
         }
 
@@ -983,11 +991,11 @@ document.addEventListener("DOMContentLoaded", () => {
         ordersEmpty.hidden = true;
 
         ordersItems.innerHTML = orders.map(order => `
-            <article class="order-card" data-order-id="${escapeHtml(order.orderNumber)}">
+            <article class="order-card" data-order-id="${escapeHtml(order.id)}">
                 <div class="order-card-header">
                     <div>
                         <span class="section-label">ORDER</span>
-                        <h3>#${escapeHtml(order.orderNumber)}</h3>
+                        <h3>#${escapeHtml(order.id)}</h3>
                     </div>
                     <span class="order-status">${escapeHtml(order.status || "Confirmed")}</span>
                 </div>
@@ -1017,14 +1025,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                 </div>
                 <div class="order-card-actions">
-                    <button type="button" class="btn btn-primary" data-order-action="track" data-order-id="${escapeHtml(order.orderNumber)}">
+                    <button type="button" class="btn btn-primary" data-order-action="track" data-order-id="${escapeHtml(order.id)}">
                         Track Order
                     </button>
                 </div>
             </article>
         `).join("");
     }
-
     function closeOrders() {
         if (!ordersDrawer) return;
         ordersDrawer.classList.remove("open");
