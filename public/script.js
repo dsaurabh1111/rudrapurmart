@@ -620,6 +620,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.addEventListener("click", event => {
         if (event.target.closest("[data-close-cart]")) closeCart();
+
     });
 
     /* =====================================================
@@ -902,6 +903,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (ordersOverlay) ordersOverlay.hidden = false;
         document.body.style.overflow = "hidden";
 
+                // ✅ Show Clear History button
+        showClearHistoryButton();
+
         // Show loading
         if (ordersItems) {
             ordersItems.innerHTML = '<div style="padding: 40px; text-align: center; color: #647069; font-size: 0.9rem;">Loading your orders...</div>';
@@ -1119,6 +1123,78 @@ document.addEventListener("DOMContentLoaded", () => {
         ordersDrawer.setAttribute("aria-hidden", "true");
         if (ordersOverlay) ordersOverlay.hidden = true;
         restoreBodyScroll();
+    }
+    
+    // =====================================================
+    // CLEAR ORDER HISTORY FEATURE
+    // =====================================================
+
+    const HIDDEN_ORDERS_KEY = 'rudramart_hidden_orders';
+
+    function getHiddenOrders() {
+        try {
+            const stored = localStorage.getItem(HIDDEN_ORDERS_KEY);
+            return stored ? JSON.parse(stored) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function saveHiddenOrders(list) {
+        try {
+            localStorage.setItem(HIDDEN_ORDERS_KEY, JSON.stringify(list));
+        } catch (e) { }
+    }
+
+    function clearAllOrders() {
+        if (!confirm('Clear all orders from view?\n\n(Orders will remain in the system for record-keeping)')) {
+            return;
+        }
+
+        const visibleOrders = document.querySelectorAll('#ordersItems .order-card');
+        const hidden = getHiddenOrders();
+
+        visibleOrders.forEach(card => {
+            const orderId = card.dataset.orderId;
+            if (orderId && !hidden.includes(orderId)) {
+                hidden.push(orderId);
+            }
+        });
+
+        saveHiddenOrders(hidden);
+
+        if (ordersItems) ordersItems.innerHTML = '';
+        if (ordersItems) ordersItems.hidden = true;
+        if (ordersEmpty) {
+            ordersEmpty.hidden = false;
+            const h3 = ordersEmpty.querySelector('h3');
+            if (h3) h3.textContent = 'No orders to show';
+        }
+
+        showToast('Order history cleared', '🗑️');
+    }
+
+    function showClearHistoryButton() {
+        const existing = document.getElementById('clearOrdersBtn');
+        if (existing) existing.remove();
+
+        const drawerHeader = ordersDrawer?.querySelector('.drawer-header');
+        if (!drawerHeader) return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'clearOrdersBtn';
+        btn.className = 'clear-orders-btn';
+        btn.innerHTML = '🗑️ Clear';
+        btn.title = 'Clear order history from view';
+        btn.addEventListener('click', clearAllOrders);
+
+        const closeBtn = drawerHeader.querySelector('.close-btn');
+        if (closeBtn) {
+            closeBtn.parentNode.insertBefore(btn, closeBtn);
+        } else {
+            drawerHeader.appendChild(btn);
+        }
     }
 
     const ordersNavBtn = document.getElementById("ordersNavBtn");

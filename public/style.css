@@ -2535,3 +2535,26 @@ body.dark-theme .popular-product-image {
     color: var(--primary);
     font-size: 1.1rem;
 }
+
+/* =========================================================
+   CLEAR ORDERS BUTTON
+========================================================= */
+
+.clear-orders-btn {
+    padding: 8px 14px;
+    margin-right: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--danger);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.clear-orders-btn:hover {
+    background: var(--danger);
+    color: #ffffff;
+    border-color: var(--danger);
+}
