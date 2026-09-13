@@ -11,10 +11,10 @@
     <title>RudraMart | Fresh Groceries Delivered</title>
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
-    
-    <!-- ✅ SUPABASE CDN ADDED -->
+
+    <!-- ✅ SUPABASE CDN (loaded once) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -517,6 +517,55 @@
         </div>
     </aside>
 
+    <!-- ========================= PROFILE DRAWER ========================= -->
+    <div class="overlay" id="profileOverlay" hidden></div>
+    <aside class="profile-drawer" id="profileDrawer" aria-label="My Profile" aria-hidden="true">
+        <div class="drawer-header">
+            <div>
+                <span class="section-label">MY ACCOUNT</span>
+                <h2>My Profile</h2>
+            </div>
+            <button type="button" class="close-btn" id="closeProfile">×</button>
+        </div>
+
+        <div class="profile-body">
+            <div class="profile-avatar-section">
+                <div class="profile-avatar-wrapper">
+                    <img id="profileAvatarImg"
+                         src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E👤%3C/text%3E%3C/svg%3E"
+                         alt="Profile">
+                    <label for="profileImageInput" class="avatar-upload-btn" title="Change photo">📷</label>
+                    <input type="file" id="profileImageInput" accept="image/*" hidden>
+                </div>
+                <h3 id="profileDisplayName">User</h3>
+                <p id="profileDisplayEmail">user@example.com</p>
+            </div>
+
+            <form id="profileForm" class="profile-form" novalidate>
+                <div class="form-group">
+                    <label for="profileName">Full Name *</label>
+                    <input type="text" id="profileName" placeholder="Enter your full name" required minlength="2">
+                </div>
+                <div class="form-group">
+                    <label for="profileEmail">Email Address</label>
+                    <input type="email" id="profileEmail" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="profilePhone">Phone Number *</label>
+                    <input type="tel" id="profilePhone" placeholder="10-digit phone number" maxlength="10" required>
+                </div>
+                <div class="form-group">
+                    <label for="profileAddress">Delivery Address *</label>
+                    <textarea id="profileAddress" rows="4" placeholder="Enter your complete address" required minlength="10"></textarea>
+                </div>
+                <div class="profile-actions">
+                    <button type="submit" class="btn btn-primary full-width">Save Changes</button>
+                    <p class="form-message" id="profileMessage" role="status"></p>
+                </div>
+            </form>
+        </div>
+    </aside>
+
     <!-- ========================= CHECKOUT MODAL ========================= -->
     <div class="modal-overlay" id="checkoutModal" hidden>
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="checkoutTitle">
@@ -580,61 +629,10 @@
         <span id="toastMessage">Done</span>
     </div>
 
-        <!-- PROFILE DRAWER -->
-    <div class="overlay" id="profileOverlay" hidden></div>
-
-    <aside class="profile-drawer" id="profileDrawer" aria-label="My Profile" aria-hidden="true">
-        <div class="drawer-header">
-            <div>
-                <span class="section-label">MY ACCOUNT</span>
-                <h2>My Profile</h2>
-            </div>
-            <button type="button" class="close-btn" id="closeProfile">×</button>
-        </div>
-
-        <div class="profile-body">
-            <div class="profile-avatar-section">
-                <div class="profile-avatar-wrapper">
-                    <img id="profileAvatarImg"
-                         src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E👤%3C/text%3E%3C/svg%3E"
-                         alt="Profile">
-                    <label for="profileImageInput" class="avatar-upload-btn" title="Change photo">📷</label>
-                    <input type="file" id="profileImageInput" accept="image/*" hidden>
-                </div>
-                <h3 id="profileDisplayName">User</h3>
-                <p id="profileDisplayEmail">user@example.com</p>
-            </div>
-
-            <form id="profileForm" class="profile-form" novalidate>
-                <div class="form-group">
-                    <label for="profileName">Full Name *</label>
-                    <input type="text" id="profileName" placeholder="Enter your full name" required minlength="2">
-                </div>
-                <div class="form-group">
-                    <label for="profileEmail">Email Address</label>
-                    <input type="email" id="profileEmail" disabled>
-                </div>
-                <div class="form-group">
-                    <label for="profilePhone">Phone Number *</label>
-                    <input type="tel" id="profilePhone" placeholder="10-digit phone number" maxlength="10" required>
-                </div>
-                <div class="form-group">
-                    <label for="profileAddress">Delivery Address *</label>
-                    <textarea id="profileAddress" rows="4" placeholder="Enter your complete address" required minlength="10"></textarea>
-                </div>
-                <div class="profile-actions">
-                    <button type="submit" class="btn btn-primary full-width">Save Changes</button>
-                    <p class="form-message" id="profileMessage" role="status"></p>
-                </div>
-            </form>
-        </div>
-    </aside>
-
     <!-- BACK TO TOP -->
     <button type="button" class="back-to-top" id="backToTop" aria-label="Back to top">↑</button>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+    <!-- ✅ Supabase + Main script (Supabase loaded once in <head>) -->
     <script src="script.js"></script>
 </body>
 

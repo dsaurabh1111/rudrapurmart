@@ -2588,7 +2588,6 @@ body.dark-theme .popular-product-image {
     overflow-y: auto;
 }
 
-/* Avatar Section */
 .profile-avatar-section {
     display: flex;
     flex-direction: column;
@@ -2629,8 +2628,8 @@ body.dark-theme .popular-product-image {
     font-size: 1rem;
     cursor: pointer;
     box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
-    transition: var(--transition);
     border: 3px solid var(--bg);
+    transition: var(--transition);
 }
 
 .avatar-upload-btn:hover {
@@ -2649,7 +2648,6 @@ body.dark-theme .popular-product-image {
     color: var(--text-muted);
 }
 
-/* Profile Form */
 .profile-form {
     display: flex;
     flex-direction: column;
@@ -2659,7 +2657,6 @@ body.dark-theme .popular-product-image {
     margin-top: 10px;
 }
 
-/* Navbar clickable user-info */
 .user-info {
     cursor: pointer;
     padding: 4px 8px;
@@ -2671,7 +2668,7 @@ body.dark-theme .popular-product-image {
     background: var(--bg-soft);
 }
 
-.user-info img.user-avatar-img {
+.user-avatar-img {
     width: 32px;
     height: 32px;
     border-radius: 50%;
