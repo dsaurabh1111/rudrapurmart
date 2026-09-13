@@ -196,7 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     /* =====================================================
-       ✅ Declare late-initialized variables here (hoisted)
+       Declare late-initialized variables here (hoisted)
     ===================================================== */
     let ordersDrawer = null;
     let ordersOverlay = null;
@@ -902,7 +902,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (ordersOverlay) ordersOverlay.hidden = false;
         document.body.style.overflow = "hidden";
 
-        // ✅ Add Clear History button directly
+        // Add Clear History button directly
         const oldBtn = document.getElementById('clearOrdersBtn');
         if (oldBtn) oldBtn.remove();
 
@@ -1041,176 +1041,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    async function fetchMyOrdersFromBackend(phone) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/orders-phone`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: phone })
-            });
-
-            const result = await response.json();
-
-            if (!response.ok || !result.success) {
-                throw new Error(result.error || 'Failed to fetch orders');
-            }
-
-            const orders = (result.orders || []).map(order => ({
-                id: order.order_number,
-                status: order.status,
-                items: order.items || [],
-                total: order.total,
-                paymentMethod: order.payment_method,
-                createdAt: order.created_at,
-                estimatedDelivery: order.estimated_delivery,
-            }));
-
-            renderFetchedOrders(orders);
-
-        } catch (error) {
-            console.error('Fetch orders error:', error);
-            if (ordersItems) {
-                ordersItems.innerHTML = '<div style="padding: 40px; text-align: center; color: #ef4444; font-size: 0.9rem;">Could not load orders. Please try again.</div>';
-            }
-        }
-    }
-
-    function renderFetchedOrders(orders) {
-        if (!ordersItems || !ordersEmpty) return;
-
-        if (!orders.length) {
-            ordersItems.innerHTML = '';
-            ordersItems.hidden = true;
-            ordersEmpty.hidden = false;
-            const h3 = ordersEmpty.querySelector('h3');
-            if (h3) h3.textContent = 'No orders yet';
-            return;
-        }
-
-        ordersItems.hidden = false;
-        ordersEmpty.hidden = true;
-
-        ordersItems.innerHTML = orders.map(order => `
-            <article class="order-card" data-order-id="${escapeHtml(order.id)}">
-                <div class="order-card-header">
-                    <div>
-                        <span class="section-label">ORDER</span>
-                        <h3>#${escapeHtml(order.id)}</h3>
-                    </div>
-                    <span class="order-status">${escapeHtml(order.status || "Confirmed")}</span>
-                </div>
-                <div class="order-date">${formatOrderDate(order.createdAt)}</div>
-                <div class="order-products">
-                    ${(order.items || []).map(item => `
-                        <div class="order-product">
-                            <div class="order-product-image">
-                                ${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" loading="lazy">` : "📦"}
-                            </div>
-                            <div class="order-product-info">
-                                <strong>${escapeHtml(item.name)}</strong>
-                                <small>${item.quantity} × ${formatPrice(item.price)}</small>
-                            </div>
-                            <strong>${formatPrice(item.lineTotal || item.price * item.quantity)}</strong>
-                        </div>
-                    `).join("")}
-                </div>
-                <div class="order-card-footer">
-                    <div>
-                        <small>Payment</small>
-                        <strong>${escapeHtml(getPaymentName(order.paymentMethod))}</strong>
-                    </div>
-                    <div>
-                        <small>Total</small>
-                        <strong>${formatPrice(order.total)}</strong>
-                    </div>
-                </div>
-                <div class="order-card-actions">
-                    <button type="button" class="btn btn-primary" data-order-action="track" data-order-id="${escapeHtml(order.id)}">
-                        Track Order
-                    </button>
-                </div>
-            </article>
-        `).join("");
-    }
-
     function closeOrders() {
         if (!ordersDrawer) return;
         ordersDrawer.classList.remove("open");
         ordersDrawer.setAttribute("aria-hidden", "true");
         if (ordersOverlay) ordersOverlay.hidden = true;
         restoreBodyScroll();
-    }
-
-    // =====================================================
-    // CLEAR ORDER HISTORY FEATURE
-    // =====================================================
-
-    const HIDDEN_ORDERS_KEY = 'rudramart_hidden_orders';
-
-    function getHiddenOrders() {
-        try {
-            const stored = localStorage.getItem(HIDDEN_ORDERS_KEY);
-            return stored ? JSON.parse(stored) : [];
-        } catch (e) {
-            return [];
-        }
-    }
-
-    function saveHiddenOrders(list) {
-        try {
-            localStorage.setItem(HIDDEN_ORDERS_KEY, JSON.stringify(list));
-        } catch (e) { }
-    }
-
-    function clearAllOrders() {
-        if (!confirm('Clear all orders from view?\n\n(Orders will remain in the system for record-keeping)')) {
-            return;
-        }
-
-        const visibleOrders = document.querySelectorAll('#ordersItems .order-card');
-        const hidden = getHiddenOrders();
-
-        visibleOrders.forEach(card => {
-            const orderId = card.dataset.orderId;
-            if (orderId && !hidden.includes(orderId)) {
-                hidden.push(orderId);
-            }
-        });
-
-        saveHiddenOrders(hidden);
-
-        if (ordersItems) ordersItems.innerHTML = '';
-        if (ordersItems) ordersItems.hidden = true;
-        if (ordersEmpty) {
-            ordersEmpty.hidden = false;
-            const h3 = ordersEmpty.querySelector('h3');
-            if (h3) h3.textContent = 'No orders to show';
-        }
-
-        showToast('Order history cleared', '🗑️');
-    }
-
-    function showClearHistoryButton() {
-        const existing = document.getElementById('clearOrdersBtn');
-        if (existing) existing.remove();
-
-        const drawerHeader = ordersDrawer?.querySelector('.drawer-header');
-        if (!drawerHeader) return;
-
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.id = 'clearOrdersBtn';
-        btn.className = 'clear-orders-btn';
-        btn.innerHTML = '🗑️ Clear';
-        btn.title = 'Clear order history from view';
-        btn.addEventListener('click', clearAllOrders);
-
-        const closeBtn = drawerHeader.querySelector('.close-btn');
-        if (closeBtn) {
-            closeBtn.parentNode.insertBefore(btn, closeBtn);
-        } else {
-            drawerHeader.appendChild(btn);
-        }
     }
 
     /* =====================================================
@@ -2014,7 +1850,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updatePopularSliderButtons();
 
     // ============================================================
-    // AUTH BRIDGE - Make required functions available to Supabase Auth
+    // AUTH BRIDGE
     // ============================================================
 
     window.RudraMartShowToast = showToast;
@@ -2243,10 +2079,23 @@ async function initAuth() {
 }
 
 // ============================================================
-// AUTH UI
+// AUTH UI  ← ✅ LOGIN GATE LOGIC ADDED HERE
 // ============================================================
 
 function updateAuthUI() {
+
+    // ✅ LOGIN GATE — show/hide based on auth
+    const gate = document.getElementById('loginGate');
+    if (gate) {
+        if (currentUser) {
+            gate.classList.add('hidden');
+            document.body.classList.remove('login-gate-active');
+        } else {
+            gate.classList.remove('hidden');
+            document.body.classList.add('login-gate-active');
+        }
+    }
+
     const loginBtn = document.getElementById("loginNavBtn");
     const userInfo = document.getElementById("userInfo");
     const userName = document.getElementById("userName");
@@ -2331,6 +2180,15 @@ function closeAuthModalFn() {
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", async () => {
+
+    // ✅ LOGIN GATE BUTTON — opens auth modal
+    const loginGateBtn = document.getElementById('loginGateBtn');
+    if (loginGateBtn) {
+        loginGateBtn.addEventListener('click', () => {
+            openAuthModal('login');
+        });
+    }
+
     // Initialize Supabase
     if (!initializeSupabase()) return;
 
@@ -2407,7 +2265,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (window.RudraMartShowToast) {
                 window.RudraMartShowToast(
                     `Welcome ${currentCustomer?.name || "User"}!`,
-                    
+                    "👋"
                 );
             }
 
@@ -2477,14 +2335,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (window.RudraMartShowToast) {
                     window.RudraMartShowToast(
                         "Account created! Please verify your email.",
-                        
+                        "📧"
                     );
                 }
             } else {
                 if (window.RudraMartShowToast) {
                     window.RudraMartShowToast(
-                        "Account created successfully! ",
-                        
+                        "Account created successfully! 🎉",
+                        "🎉"
                     );
                 }
             }
