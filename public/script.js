@@ -909,38 +909,119 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (ordersEmpty) ordersEmpty.hidden = true;
 
-        // Determine phone: prefer logged-in customer's phone, else ask
-        let phone = currentCustomer?.phone || '';
+        // Use customer phone OR prompt
+        let phone = (currentCustomer && currentCustomer.phone) ? currentCustomer.phone : '';
 
-        // If no phone from login, prompt user
         if (!phone) {
-            phone = prompt('Please enter your 10-digit phone number to see your orders:');
-            if (!phone) {
-                if (ordersItems) ordersItems.innerHTML = '';
-                if (ordersItems) ordersItems.hidden = true;
-                if (ordersEmpty) ordersEmpty.hidden = false;
-                return;
-            }
+            phone = prompt('Enter your 10-digit phone number to see your orders:');
         }
 
-        // Clean phone (digits only)
-        phone = phone.replace(/[^\d]/g, '').slice(0, 10);
-
-        if (!/^\d{10}$/.test(phone)) {
+        if (!phone) {
             if (ordersItems) ordersItems.innerHTML = '';
             if (ordersItems) ordersItems.hidden = true;
-            if (ordersEmpty) {
-                ordersEmpty.hidden = false;
-                const h3 = ordersEmpty.querySelector('h3');
-                if (h3) h3.textContent = 'Invalid phone number';
-            }
+            if (ordersEmpty) ordersEmpty.hidden = false;
             return;
         }
 
-        // Fetch from backend
-        await fetchMyOrdersFromBackend(phone);
-    }
+        // Clean phone (keep only digits)
+        phone = phone.toString().replace(/[^\d]/g, '').slice(0, 10);
 
+        if (phone.length !== 10) {
+            if (ordersItems) ordersItems.innerHTML = '<div style="padding: 40px; text-align: center; color: #ef4444;">Please enter a valid 10-digit phone number.</div>';
+            return;
+        }
+
+        // Fetch orders from backend
+        try {
+            const response = await fetch(`${API_BASE_URL}/orders-phone`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phone })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || 'Failed to fetch orders');
+            }
+
+            const orders = (result.orders || []).map(order => ({
+                id: order.order_number,
+                status: order.status,
+                items: order.items || [],
+                total: order.total,
+                paymentMethod: order.payment_method,
+                createdAt: order.created_at,
+                estimatedDelivery: order.estimated_delivery,
+            }));
+
+            // Render orders
+            if (!orders.length) {
+                if (ordersItems) ordersItems.innerHTML = '';
+                if (ordersItems) ordersItems.hidden = true;
+                if (ordersEmpty) {
+                    ordersEmpty.hidden = false;
+                    const h3 = ordersEmpty.querySelector('h3');
+                    if (h3) h3.textContent = 'No orders found for this phone';
+                }
+                return;
+            }
+
+            if (ordersItems) {
+                ordersItems.hidden = false;
+                ordersItems.innerHTML = orders.map(order => `
+                    <article class="order-card" data-order-id="${escapeHtml(order.id)}">
+                        <div class="order-card-header">
+                            <div>
+                                <span class="section-label">ORDER</span>
+                                <h3>#${escapeHtml(order.id)}</h3>
+                            </div>
+                            <span class="order-status">${escapeHtml(order.status || "Confirmed")}</span>
+                        </div>
+                        <div class="order-date">${formatOrderDate(order.createdAt)}</div>
+                        <div class="order-products">
+                            ${(order.items || []).map(item => `
+                                <div class="order-product">
+                                    <div class="order-product-image">
+                                        ${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" loading="lazy">` : "📦"}
+                                    </div>
+                                    <div class="order-product-info">
+                                        <strong>${escapeHtml(item.name)}</strong>
+                                        <small>${item.quantity} × ${formatPrice(item.price)}</small>
+                                    </div>
+                                    <strong>${formatPrice(item.lineTotal || item.price * item.quantity)}</strong>
+                                </div>
+                            `).join("")}
+                        </div>
+                        <div class="order-card-footer">
+                            <div>
+                                <small>Payment</small>
+                                <strong>${escapeHtml(getPaymentName(order.paymentMethod))}</strong>
+                            </div>
+                            <div>
+                                <small>Total</small>
+                                <strong>${formatPrice(order.total)}</strong>
+                            </div>
+                        </div>
+                        <div class="order-card-actions">
+                            <button type="button" class="btn btn-primary" data-order-action="track" data-order-id="${escapeHtml(order.id)}">
+                                Track Order
+                            </button>
+                        </div>
+                    </article>
+                `).join("");
+            }
+
+            if (ordersEmpty) ordersEmpty.hidden = true;
+
+        } catch (error) {
+            console.error('Fetch orders error:', error);
+            if (ordersItems) {
+                ordersItems.hidden = false;
+                ordersItems.innerHTML = '<div style="padding: 40px; text-align: center; color: #ef4444;">Failed to load orders. Please try again.</div>';
+            }
+        }
+    }
     async function fetchMyOrdersFromBackend(phone) {
         try {
             const response = await fetch(`${API_BASE_URL}/orders-phone`, {
