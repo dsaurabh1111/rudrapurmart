@@ -1756,15 +1756,21 @@ async function signIn(email, password) {
     currentUser = data.user;
 
     // Get customer information
-    const {
-        data: customer,
-        error: customerError
-    } = await supabaseClient
+ let { data: customer } = await supabaseClient
+    .from("customers")
+    .select("*")
+    .eq("auth_user_id", data.user.id)
+    .maybeSingle();
+
+// Fallback: fetch by email
+if (!customer) {
+    const { data: customerByEmail } = await supabaseClient
         .from("customers")
         .select("*")
-        .eq("auth_user_id", data.user.id)
+        .eq("email", data.user.email)
         .maybeSingle();
-
+    customer = customerByEmail;
+}
     if (customerError) {
         console.warn(
             "Could not load customer profile:",
@@ -1837,10 +1843,7 @@ async function initAuth() {
 
     try {
 
-        const {
-            data,
-            error
-        } = await supabaseClient.auth.getSession();
+        const { data, error } = await supabaseClient.auth.getSession();
 
         if (error) {
             console.error("Session error:", error);
@@ -1853,13 +1856,22 @@ async function initAuth() {
 
             currentUser = session.user;
 
-            const {
-                data: customer
-            } = await supabaseClient
+            // ✅ Try to fetch customer by auth_user_id
+            let { data: customer } = await supabaseClient
                 .from("customers")
                 .select("*")
                 .eq("auth_user_id", session.user.id)
                 .maybeSingle();
+
+            // ✅ Fallback: fetch by email
+            if (!customer) {
+                const { data: customerByEmail } = await supabaseClient
+                    .from("customers")
+                    .select("*")
+                    .eq("email", session.user.email)
+                    .maybeSingle();
+                customer = customerByEmail;
+            }
 
             currentCustomer = customer || {
                 name: session.user.email?.split("@")[0] || "User",
@@ -1871,11 +1883,7 @@ async function initAuth() {
         updateAuthUI();
 
     } catch (error) {
-
-        console.error(
-            "Authentication initialization failed:",
-            error
-        );
+        console.error("Authentication init failed:", error);
     }
 }
 
@@ -2513,17 +2521,21 @@ document.addEventListener("DOMContentLoaded", async () => {
                 // Avoid unnecessary duplicate UI calls
                 try {
 
-                    const {
-                        data: customer
-                    } = await supabaseClient
-                        .from("customers")
-                        .select("*")
-                        .eq(
-                            "auth_user_id",
-                            session.user.id
-                        )
-                        .maybeSingle();
+let { data: customer } = await supabaseClient
+    .from("customers")
+    .select("*")
+    .eq("auth_user_id", session.user.id)
+    .maybeSingle();
 
+// Fallback: fetch by email
+if (!customer) {
+    const { data: customerByEmail } = await supabaseClient
+        .from("customers")
+        .select("*")
+        .eq("email", session.user.email)
+        .maybeSingle();
+    customer = customerByEmail;
+}
                     currentCustomer =
                         customer || {
                             name:
