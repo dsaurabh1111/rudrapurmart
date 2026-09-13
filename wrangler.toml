@@ -5,3 +5,9 @@ compatibility_date = "2024-09-23"
 [assets]
 directory = "public"
 binding = "ASSETS"
+
+[vars]
+SUPABASE_URL = "https://wmkzpblyjxedfrlarstm.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indta3pwYmx5anhlZGZybGFyc3RtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NTMyNjgsImV4cCI6MjEwNDEyOTI2OH0.27riS3RhL-HY5d2ZDe3UqKhUmKWDe8u3uiujzL6Xa9E"
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indta3pwYmx5anhlZGZybGFyc3RtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODU1MzI2OCwiZXhwIjoyMTA0MTI5MjY4fQ.-cOuSKZ8JRvkPGGJEQNE9rthB3ewZTzo3kMB2hGoFEs"
+ADMIN_SECRET = "RudraMart-admin-2024"
