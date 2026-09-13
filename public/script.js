@@ -903,8 +903,144 @@ document.addEventListener("DOMContentLoaded", () => {
         if (ordersOverlay) ordersOverlay.hidden = false;
         document.body.style.overflow = "hidden";
 
-                // ✅ Show Clear History button
-        showClearHistoryButton();
+        // ✅ Add Clear History button directly
+        const oldBtn = document.getElementById('clearOrdersBtn');
+        if (oldBtn) oldBtn.remove();
+
+        const header = ordersDrawer.querySelector('.drawer-header');
+        if (header) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.id = 'clearOrdersBtn';
+            btn.className = 'clear-orders-btn';
+            btn.textContent = '🗑️ Clear';
+            btn.style.cssText = 'padding:8px 14px; margin-right:10px; border:1px solid #e5ebe7; border-radius:10px; background:transparent; color:#ef4444; font-size:0.78rem; font-weight:700; cursor:pointer;';
+
+            btn.addEventListener('click', function () {
+                if (!confirm('Clear all orders from view?\n\n(Orders will remain in the database)')) return;
+
+                let hidden = [];
+                try {
+                    hidden = JSON.parse(localStorage.getItem('rudramart_hidden_orders') || '[]');
+                } catch (e) { hidden = []; }
+
+                const cards = document.querySelectorAll('#ordersItems .order-card');
+                cards.forEach(card => {
+                    const id = card.dataset.orderId;
+                    if (id && !hidden.includes(id)) hidden.push(id);
+                });
+
+                localStorage.setItem('rudramart_hidden_orders', JSON.stringify(hidden));
+
+                if (ordersItems) ordersItems.innerHTML = '';
+                if (ordersItems) ordersItems.hidden = true;
+                if (ordersEmpty) ordersEmpty.hidden = false;
+
+                if (window.RudraMartShowToast) {
+                    window.RudraMartShowToast('Orders cleared from view', '🗑️');
+                }
+            });
+
+            const closeBtn = header.querySelector('.close-btn');
+            if (closeBtn) {
+                header.insertBefore(btn, closeBtn);
+            } else {
+                header.appendChild(btn);
+            }
+        }
+
+        // =========== Load orders ===========
+        if (ordersItems) {
+            ordersItems.innerHTML = '<div style="padding:40px;text-align:center;color:#647069;">Loading orders...</div>';
+            ordersItems.hidden = false;
+        }
+        if (ordersEmpty) ordersEmpty.hidden = true;
+
+        let phone = (currentCustomer && currentCustomer.phone) ? currentCustomer.phone : '';
+        if (!phone) phone = prompt('Enter your 10-digit phone number:');
+        if (!phone) return;
+
+        phone = phone.toString().replace(/[^\d]/g, '').slice(0, 10);
+        if (phone.length !== 10) {
+            if (ordersItems) ordersItems.innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444;">Invalid phone</div>';
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/orders-phone`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phone })
+            });
+            const data = await res.json();
+
+            let hidden = [];
+            try {
+                hidden = JSON.parse(localStorage.getItem('rudramart_hidden_orders') || '[]');
+            } catch (e) { hidden = []; }
+
+            const orders = (data.orders || [])
+                .filter(o => !hidden.includes(o.order_number))
+                .map(o => ({
+                    id: o.order_number,
+                    status: o.status,
+                    items: o.items || [],
+                    total: o.total,
+                    paymentMethod: o.payment_method,
+                    createdAt: o.created_at
+                }));
+
+            if (!orders.length) {
+                if (ordersItems) ordersItems.innerHTML = '';
+                if (ordersItems) ordersItems.hidden = true;
+                if (ordersEmpty) {
+                    ordersEmpty.hidden = false;
+                    const h3 = ordersEmpty.querySelector('h3');
+                    if (h3) h3.textContent = 'No orders to show';
+                }
+                return;
+            }
+
+            if (ordersItems) {
+                ordersItems.hidden = false;
+                ordersItems.innerHTML = orders.map(order => `
+                    <article class="order-card" data-order-id="${escapeHtml(order.id)}">
+                        <div class="order-card-header">
+                            <div><span class="section-label">ORDER</span><h3>#${escapeHtml(order.id)}</h3></div>
+                            <span class="order-status">${escapeHtml(order.status || 'confirmed')}</span>
+                        </div>
+                        <div class="order-date">${formatOrderDate(order.createdAt)}</div>
+                        <div class="order-products">
+                            ${(order.items || []).map(item => `
+                                <div class="order-product">
+                                    <div class="order-product-image">
+                                        ${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" loading="lazy">` : '📦'}
+                                    </div>
+                                    <div class="order-product-info">
+                                        <strong>${escapeHtml(item.name)}</strong>
+                                        <small>${item.quantity} × ${formatPrice(item.price)}</small>
+                                    </div>
+                                    <strong>${formatPrice(item.lineTotal || item.price * item.quantity)}</strong>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="order-card-footer">
+                            <div><small>Payment</small><strong>${escapeHtml(getPaymentName(order.paymentMethod))}</strong></div>
+                            <div><small>Total</small><strong>${formatPrice(order.total)}</strong></div>
+                        </div>
+                        <div class="order-card-actions">
+                            <button type="button" class="btn btn-primary" data-order-action="track" data-order-id="${escapeHtml(order.id)}">Track Order</button>
+                        </div>
+                    </article>
+                `).join('');
+            }
+            if (ordersEmpty) ordersEmpty.hidden = true;
+
+        } catch (err) {
+            console.error('Orders fetch error:', err);
+            if (ordersItems) ordersItems.innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444;">Failed to load orders</div>';
+        }
+    }
 
         // Show loading
         if (ordersItems) {
@@ -1025,7 +1161,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ordersItems.innerHTML = '<div style="padding: 40px; text-align: center; color: #ef4444;">Failed to load orders. Please try again.</div>';
             }
         }
-    }
+    })
     async function fetchMyOrdersFromBackend(phone) {
         try {
             const response = await fetch(`${API_BASE_URL}/orders-phone`, {
@@ -1761,7 +1897,7 @@ window.RudraMartShowToast = showToast;
 window.RudraMartCloseMobileMenu = closeMobileMenu;
 
     console.log("RudraMart loaded successfully.");
-});
+
 
 // ============================================================
 // SUPABASE AUTHENTICATION
