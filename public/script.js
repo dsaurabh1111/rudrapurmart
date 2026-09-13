@@ -1332,6 +1332,249 @@ document.addEventListener("DOMContentLoaded", () => {
             drawerHeader.appendChild(btn);
         }
     }
+    /* =====================================================
+       PROFILE DRAWER
+    ===================================================== */
+
+    function openProfile() {
+        const profileDrawer = document.getElementById('profileDrawer');
+        const profileOverlay = document.getElementById('profileOverlay');
+
+        if (!profileDrawer) {
+            showToast('Profile drawer not found', '❌');
+            return;
+        }
+
+        if (!currentCustomer && !currentUser) {
+            showToast('Please login first', '⚠️');
+            return;
+        }
+
+        // Populate form
+        const nameInput = document.getElementById('profileName');
+        const emailInput = document.getElementById('profileEmail');
+        const phoneInput = document.getElementById('profilePhone');
+        const addressInput = document.getElementById('profileAddress');
+        const displayName = document.getElementById('profileDisplayName');
+        const displayEmail = document.getElementById('profileDisplayEmail');
+        const avatarImg = document.getElementById('profileAvatarImg');
+
+        const name = currentCustomer?.name || '';
+        const email = currentCustomer?.email || currentUser?.email || '';
+        const phone = currentCustomer?.phone || '';
+        const address = currentCustomer?.address || '';
+
+        if (nameInput) nameInput.value = name;
+        if (emailInput) emailInput.value = email;
+        if (phoneInput) phoneInput.value = phone;
+        if (addressInput) addressInput.value = address;
+        if (displayName) displayName.textContent = name || 'User';
+        if (displayEmail) displayEmail.textContent = email || '';
+
+        // Load profile image
+        if (currentCustomer?.profile_image && avatarImg) {
+            avatarImg.src = currentCustomer.profile_image;
+        }
+
+        // Open drawer
+        profileDrawer.classList.add('open');
+        profileDrawer.setAttribute('aria-hidden', 'false');
+        if (profileOverlay) profileOverlay.hidden = false;
+        document.body.style.overflow = 'hidden';
+
+        // Clear message
+        const msg = document.getElementById('profileMessage');
+        if (msg) {
+            msg.textContent = '';
+            msg.className = 'form-message';
+        }
+    }
+
+    function closeProfile() {
+        const profileDrawer = document.getElementById('profileDrawer');
+        const profileOverlay = document.getElementById('profileOverlay');
+
+        if (profileDrawer) {
+            profileDrawer.classList.remove('open');
+            profileDrawer.setAttribute('aria-hidden', 'true');
+        }
+        if (profileOverlay) profileOverlay.hidden = true;
+
+        if (typeof restoreBodyScroll === 'function') restoreBodyScroll();
+        else document.body.style.overflow = '';
+    }
+
+    // Attach listeners
+    document.getElementById('profileOverlay')?.addEventListener('click', closeProfile);
+    document.getElementById('closeProfile')?.addEventListener('click', closeProfile);
+
+    // Click on user info in navbar opens profile
+    document.getElementById('userInfo')?.addEventListener('click', (e) => {
+        if (e.target.closest('#logoutBtn')) return;
+        openProfile();
+    });
+
+    /* =====================================================
+       PROFILE IMAGE UPLOAD
+    ===================================================== */
+
+    document.getElementById('profileImageInput')?.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('Image must be under 2 MB', '⚠️');
+            return;
+        }
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select an image file', '⚠️');
+            return;
+        }
+
+        if (!supabaseClient || !currentUser) {
+            showToast('Please login first', '⚠️');
+            return;
+        }
+
+        try {
+            showToast('Uploading image...', '⏳');
+
+            // Preview
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const avatarImg = document.getElementById('profileAvatarImg');
+                if (avatarImg) avatarImg.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+
+            // Upload to Supabase Storage
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`;
+
+            const { error: uploadError } = await supabaseClient.storage
+                .from('avatars')
+                .upload(fileName, file, { upsert: true });
+
+            if (uploadError) throw uploadError;
+
+            // Get public URL
+            const { data: urlData } = supabaseClient.storage
+                .from('avatars')
+                .getPublicUrl(fileName);
+
+            const publicUrl = urlData.publicUrl;
+
+            // Save to customers table
+            const { error: updateError } = await supabaseClient
+                .from('customers')
+                .update({ profile_image: publicUrl })
+                .eq('auth_user_id', currentUser.id);
+
+            if (updateError) throw updateError;
+
+            if (currentCustomer) currentCustomer.profile_image = publicUrl;
+
+            // Update navbar avatar
+            const navAvatar = document.querySelector('.user-avatar');
+            if (navAvatar) {
+                navAvatar.innerHTML = `<img src="${publicUrl}" class="user-avatar-img" alt="Profile" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">`;
+            }
+
+            showToast('Profile photo updated ✅', '✅');
+
+        } catch (err) {
+            console.error('Upload error:', err);
+            showToast('Upload failed: ' + err.message, '❌');
+        }
+    });
+
+    /* =====================================================
+       PROFILE SAVE
+    ===================================================== */
+
+    document.getElementById('profileForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const nameInput = document.getElementById('profileName');
+        const phoneInput = document.getElementById('profilePhone');
+        const addressInput = document.getElementById('profileAddress');
+        const msg = document.getElementById('profileMessage');
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+
+        const name = nameInput?.value.trim() || '';
+        const phone = (phoneInput?.value || '').replace(/[^\d]/g, '').slice(0, 10);
+        const address = addressInput?.value.trim() || '';
+
+        if (name.length < 2) {
+            if (msg) { msg.textContent = 'Please enter your full name.'; msg.className = 'form-message error'; }
+            return;
+        }
+        if (phone.length !== 10) {
+            if (msg) { msg.textContent = 'Please enter a valid 10-digit phone.'; msg.className = 'form-message error'; }
+            return;
+        }
+        if (address && address.length < 10) {
+            if (msg) { msg.textContent = 'Please enter a complete address.'; msg.className = 'form-message error'; }
+            return;
+        }
+
+        if (!supabaseClient || !currentUser) {
+            if (msg) { msg.textContent = 'Please login first.'; msg.className = 'form-message error'; }
+            return;
+        }
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+        }
+
+        try {
+            const { error } = await supabaseClient
+                .from('customers')
+                .update({
+                    name: name,
+                    phone: phone,
+                    address: address || null
+                })
+                .eq('auth_user_id', currentUser.id);
+
+            if (error) throw error;
+
+            if (currentCustomer) {
+                currentCustomer.name = name;
+                currentCustomer.phone = phone;
+                currentCustomer.address = address;
+            }
+
+            // Update UI
+            const displayName = document.getElementById('profileDisplayName');
+            const userNameEl = document.getElementById('userName');
+            const mobileUserName = document.getElementById('mobileUserName');
+
+            if (displayName) displayName.textContent = name;
+            if (userNameEl) userNameEl.textContent = name;
+            if (mobileUserName) mobileUserName.textContent = name;
+
+            if (msg) {
+                msg.textContent = '✅ Profile saved successfully!';
+                msg.className = 'form-message success';
+            }
+
+            showToast('Profile updated ✅', '✅');
+
+        } catch (err) {
+            console.error('Save error:', err);
+            if (msg) {
+                msg.textContent = 'Failed to save: ' + err.message;
+                msg.className = 'form-message error';
+            }
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Changes';
+            }
+        }
+    });
 
     const ordersNavBtn = document.getElementById("ordersNavBtn");
     if (ordersNavBtn) {
