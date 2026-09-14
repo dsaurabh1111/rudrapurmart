@@ -15,6 +15,21 @@
     <!-- ✅ SUPABASE CDN (loaded once) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+    <!-- ✅ Dark Mode Default (prevents flash) -->
+    <script>
+        (function() {
+            try {
+                var sessionTheme = sessionStorage.getItem('RudraMart_theme_session');
+                var theme = sessionTheme === 'light' ? 'light' : 'dark';
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark-theme-preload');
+                }
+            } catch (e) {
+                document.documentElement.classList.add('dark-theme-preload');
+            }
+        })();
+    </script>
+
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -29,12 +44,12 @@
         </div>
         <h1>Welcome to RudraMart</h1>
         <p>Fresh groceries delivered to your doorstep. Please login to continue.</p>
-<button type="button" class="btn btn-primary login-gate-btn" id="loginGateBtn">
-    🔑 Login / Sign Up
+        <button type="button" class="btn btn-primary login-gate-btn" id="loginGateBtn">
+            🔑 Login / Sign Up
         </button>
         <p class="login-gate-footer">Free delivery on orders above ₹99</p>
     </div>
-</div>    
+</div>
 
     <!-- ========================= HEADER ========================= -->
     <header class="site-header" id="top">
@@ -65,11 +80,14 @@
                     <!-- ✅ LOGIN BUTTON (Desktop) -->
                     <button type="button" class="icon-btn" id="loginNavBtn" aria-label="Login">👤</button>
 
-                    <!-- ✅ USER INFO (When logged in) -->
-                    <div class="user-info" id="userInfo" style="display:none; align-items:center; gap:8px;">
-                        <span class="user-avatar">👤</span>
-                        <span id="userName" style="font-weight:600; font-size:0.9rem;"></span>
-                        <button type="button" class="btn btn-text" id="logoutBtn" style="font-size:0.75rem; color:var(--text-light);">Logout</button>
+                    <!-- ✅ USER INFO (When logged in) — Only Avatar -->
+                    <div class="user-info" id="userInfo" style="display:none; align-items:center;">
+                        <span class="user-avatar" id="userAvatarBtn" title="My Profile" role="button" tabindex="0" aria-label="Open profile">
+                            <span id="userAvatarIcon">👤</span>
+                        </span>
+                        <!-- Hidden (script compatibility) -->
+                        <span id="userName" style="display:none;"></span>
+                        <button type="button" id="logoutBtn" style="display:none;"></button>
                     </div>
 
                     <button type="button" class="icon-btn orders-nav-btn" id="ordersNavBtn" aria-label="My Orders">📦</button>
@@ -83,24 +101,26 @@
                 </div>
             </div>
 
-            <!-- ✅ MOBILE MENU - WITH AUTH LINKS -->
+            <!-- ✅ MOBILE MENU -->
             <div class="mobile-menu" id="mobileMenu">
                 <div class="mobile-search">
                     <input type="search" id="mobileSearch" placeholder="Search products...">
                     <button type="button" id="mobileSearchBtn">Search</button>
                 </div>
 
-                <!-- Mobile Auth Links (Logged Out) -->
+                <!-- Mobile Auth Links (Logged Out only) -->
                 <div id="mobileAuthLinks">
                     <a href="#" id="mobileLoginLink" data-mobile-link>🔑 Login</a>
                     <a href="#" id="mobileSignupLink" data-mobile-link>📝 Sign Up</a>
                 </div>
 
-                <!-- Mobile User Info (Logged In) -->
-                <div id="mobileUserInfo" style="display:none; padding: 12px 4px; border-bottom: 1px solid var(--border);">
-                    <span style="font-weight:600;">👤 <span id="mobileUserName">User</span></span>
-                    <a href="#" id="mobileLogoutLink" data-mobile-link style="color:var(--danger);">🚪 Logout</a>
-                </div>
+                <!-- ✅ My Profile — Only shows when logged in (JS toggles) -->
+                <a href="#" id="mobileProfileLinkItem" data-mobile-link style="display:none;">
+                    👤 My Profile
+                </a>
+
+                <!-- ✅ My Orders — always visible -->
+                <a href="#" id="mobileOrdersLink" data-mobile-link>📦 My Orders</a>
 
                 <a href="#home" data-mobile-link>Home</a>
                 <a href="#categories" data-mobile-link>Categories</a>
@@ -180,54 +200,7 @@
                         <button type="button" class="btn btn-primary" data-scroll="products">Shop Now →</button>
                         <button type="button" class="btn btn-outline" data-scroll="categories">Explore Categories</button>
                     </div>
-                    <div class="hero-trust">
-                        <div><strong>10K+</strong><span>Happy Customers</span></div>
-                        <div><strong>500+</strong><span>Fresh Products</span></div>
-                        <div><strong>30 Min</strong><span>Fast Delivery</span></div>
-                    </div>
                 </div>
-
-                <div class="hero-visual">
-                    <div class="hero-circle"></div>
-                    <div class="floating-card floating-card-one"><img src="images/avocado.png" alt="Avocado"><span>Farm Fresh</span></div>
-                    <div class="floating-card floating-card-two"><img src="images/delivery.png" alt="Quick Delivery"><span>Quick Delivery</span></div>
-                    <div class="grocery-basket">
-                        <div class="basket-top">
-                            <img src="images/apple1.png" alt="Apple">
-                            <img src="images/Banana1.png" alt="Banana">
-                            <img src="images/broccoli.png" alt="Broccoli">
-                            <img src="images/tomato.png" alt="Tomato">
-                        </div>
-                        <div class="basket-body">
-                            <img src="images/lettuce.png" alt="Lettuce">
-                            <img src="images/milk.png" alt="Milk">
-                            <img src="images/bread1.png" alt="Bread">
-                            <img src="images/eggs.png" alt="Eggs">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- FEATURES -->
-        <section class="features">
-            <div class="container feature-grid">
-                <article class="feature-card">
-                    <div class="feature-icon"><img src="images/delivery.png" alt="Fast Delivery"></div>
-                    <div><h3>Fast Delivery</h3><p>Get your groceries quickly.</p></div>
-                </article>
-                <article class="feature-card">
-                    <div class="feature-icon"><img src="images/Fresh Products.png" alt="Fresh Products"></div>
-                    <div><h3>Fresh Products</h3><p>Quality products every day.</p></div>
-                </article>
-                <article class="feature-card">
-                    <div class="feature-icon"><img src="images/secure shopping.png" alt="Secure Shopping"></div>
-                    <div><h3>Secure Shopping</h3><p>Your shopping experience is safe.</p></div>
-                </article>
-                <article class="feature-card">
-                    <div class="feature-icon"><img src="images/best prices.png" alt="Best Prices"></div>
-                    <div><h3>Best Prices</h3><p>Affordable everyday prices.</p></div>
-                </article>
             </div>
         </section>
 
@@ -237,7 +210,7 @@
                 <div class="section-heading popular-heading">
                     <div>
                         <span class="section-label">POPULAR PICKS</span>
-                        <h2>🔥 Popular Snacks & Drinks</h2>
+                        <h2>Popular Snacks & Drinks</h2>
                         <p>Discover your favorite snacks, refreshing drinks and delicious treats.</p>
                     </div>
                 </div>
@@ -440,46 +413,68 @@
 
     <!-- ========================= FOOTER ========================= -->
     <footer class="footer">
-        <div class="container footer-grid">
-            <div class="footer-brand">
-                <a href="#home" class="logo">
-                    <span class="logo-icon">🛒</span>
-                    <span><strong>Rudrapur</strong>Mart</span>
-                </a>
-                <p>Fresh groceries and everyday essentials, delivered with care.</p>
-                <div class="social-links">
-                    <a href="#contact" aria-label="Facebook">f</a>
-                    <a href="#contact" aria-label="Instagram">◎</a>
-                    <a href="#contact" aria-label="Twitter">𝕏</a>
+        <div class="container">
+
+            <!-- Top: Brand + Social -->
+            <div class="footer-top">
+                <div class="footer-brand-block">
+                    <a href="#home" class="logo">
+                        <span class="logo-icon">🛒</span>
+                        <span><strong>Rudra</strong>Mart</span>
+                    </a>
+                    <p>Fresh groceries and everyday essentials, delivered with care.</p>
+                </div>
+
+                <div class="footer-social-block">
+                    <span class="footer-social-label">Follow us</span>
+                    <div class="social-links">
+                        <a href="#contact" aria-label="Facebook" title="Facebook">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg>
+                        </a>
+                        <a href="#contact" aria-label="Instagram" title="Instagram">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41-.56-.22-.96-.48-1.38-.9-.42-.42-.68-.82-.9-1.38-.16-.42-.36-1.06-.41-2.23-.06-1.27-.07-1.65-.07-4.85s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41 1.27-.06 1.65-.07 4.85-.07zM12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63c-.79.31-1.46.72-2.13 1.38C1.35 2.68.94 3.35.63 4.14.33 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.31.79.72 1.46 1.38 2.13.67.66 1.34 1.07 2.13 1.38.76.3 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56.79-.31 1.46-.72 2.13-1.38.66-.67 1.07-1.34 1.38-2.13.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91-.31-.79-.72-1.46-1.38-2.13-.67-.66-1.34-1.07-2.13-1.38-.76-.3-1.64-.5-2.91-.56C15.67.01 15.26 0 12 0zm0 5.84c-3.4 0-6.16 2.76-6.16 6.16s2.76 6.16 6.16 6.16 6.16-2.76 6.16-6.16S15.4 5.84 12 5.84zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm6.4-10.16c-.8 0-1.44.64-1.44 1.44s.64 1.44 1.44 1.44 1.44-.64 1.44-1.44-.64-1.44-1.44-1.44z"/></svg>
+                        </a>
+                        <a href="#contact" aria-label="Twitter" title="Twitter">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                        </a>
+                        <a href="#contact" aria-label="WhatsApp" title="WhatsApp">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                        </a>
+                    </div>
                 </div>
             </div>
-            <div class="footer-column">
-                <h3>Quick Links</h3>
-                <a href="#home">Home</a>
-                <a href="#products">Products</a>
-                <a href="#categories">Categories</a>
-                <a href="#about">About Us</a>
+
+            <!-- Middle: Link Columns -->
+            <div class="footer-links">
+                <div class="footer-column">
+                    <h4>Quick Links</h4>
+                    <a href="#home">Home</a>
+                    <a href="#products">Products</a>
+                    <a href="#categories">Categories</a>
+                    <a href="#about">About Us</a>
+                </div>
+                <div class="footer-column">
+                    <h4>Shop</h4>
+                    <a href="#products">Fruits</a>
+                    <a href="#products">Vegetables</a>
+                    <a href="#products">Dairy</a>
+                    <a href="#products">Bakery</a>
+                </div>
+                <div class="footer-column">
+                    <h4>Customer Care</h4>
+                    <a href="#contact">Contact Us</a>
+                    <a href="#contact">Delivery Info</a>
+                    <a href="#contact">Privacy Policy</a>
+                    <a href="#contact">Terms & Conditions</a>
+                </div>
             </div>
-            <div class="footer-column">
-                <h3>Categories</h3>
-                <a href="#products">Fruits</a>
-                <a href="#products">Vegetables</a>
-                <a href="#products">Dairy</a>
-                <a href="#products">Bakery</a>
-            </div>
-            <div class="footer-column">
-                <h3>Customer Care</h3>
-                <a href="#contact">Contact Us</a>
-                <a href="#contact">Delivery Info</a>
-                <a href="#contact">Privacy Policy</a>
-                <a href="#contact">Terms & Conditions</a>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <div class="container footer-bottom-inner">
+
+            <!-- Bottom Bar -->
+            <div class="footer-bottom-bar">
                 <p>© <span id="currentYear"></span> RudraMart. All rights reserved.</p>
                 <p>Made with ❤️ for fresh living.</p>
             </div>
+
         </div>
     </footer>
 
@@ -579,6 +574,13 @@
                     <p class="form-message" id="profileMessage" role="status"></p>
                 </div>
             </form>
+
+            <!-- ✅ Logout inside profile drawer -->
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                <button type="button" class="btn full-width" id="profileLogoutBtn" style="background: transparent; color: var(--danger); border: 1px solid var(--danger); font-weight: 700;">
+                    🚪 Logout
+                </button>
+            </div>
         </div>
     </aside>
 
@@ -648,7 +650,85 @@
     <!-- BACK TO TOP -->
     <button type="button" class="back-to-top" id="backToTop" aria-label="Back to top">↑</button>
 
-    <!-- ✅ Supabase + Main script (Supabase loaded once in <head>) -->
+    <!-- ✅ LOGIN GATE BUTTON HANDLER (Inline - Guaranteed) -->
+    <script>
+    (function() {
+        function attachHandler() {
+            var btn = document.getElementById('loginGateBtn');
+            var modal = document.getElementById('authModal');
+            var gate = document.getElementById('loginGate');
+
+            if (!btn || !modal || !gate) {
+                setTimeout(attachHandler, 200);
+                return;
+            }
+
+            function openModal() {
+                gate.classList.add('hidden');
+                modal.hidden = false;
+                modal.style.display = 'grid';
+                modal.style.position = 'fixed';
+                modal.style.zIndex = '99999999';
+                document.body.style.overflow = 'hidden';
+                console.log('✅ Modal opened, gate hidden');
+            }
+
+            function closeModal() {
+                modal.hidden = true;
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+                if (!window.currentUser && gate) {
+                    gate.classList.remove('hidden');
+                }
+                console.log('Modal closed');
+            }
+
+            btn.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openModal();
+            };
+
+            var closeBtn = document.getElementById('closeAuthModal');
+            if (closeBtn) closeBtn.onclick = closeModal;
+
+            modal.onclick = function(e) {
+                if (e.target === modal) closeModal();
+            };
+
+            console.log('✅ Login gate handler attached');
+        }
+        attachHandler();
+    })();
+    </script>
+
+    <!-- ✅ My Profile Mobile Link — Static click handler -->
+    <script>
+    (function() {
+        function attachProfileHandler() {
+            var link = document.getElementById('mobileProfileLinkItem');
+            if (!link) {
+                setTimeout(attachProfileHandler, 300);
+                return;
+            }
+            if (link.dataset.handlerAttached === 'true') return;
+            link.dataset.handlerAttached = 'true';
+
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (window.RudraMartCloseMobileMenu) window.RudraMartCloseMobileMenu();
+                if (typeof openProfile === 'function') {
+                    openProfile();
+                } else {
+                    console.warn('openProfile function not found yet');
+                }
+            });
+        }
+        attachProfileHandler();
+    })();
+    </script>
+
+    <!-- ✅ Supabase + Main script -->
     <script src="script.js"></script>
 </body>
 

@@ -130,7 +130,13 @@ document.addEventListener("DOMContentLoaded", () => {
         search: "",
         sort: "default",
         visibleProducts: 8,
-        theme: loadStorage(STORAGE_KEYS.theme, "light") === "dark" ? "dark" : "light"
+        theme: (function() {
+            try {
+                return sessionStorage.getItem('RudraMart_theme_session') === 'light' ? 'light' : 'dark';
+            } catch (e) {
+                return 'dark';
+            }
+        })()
     };
 
     /* =====================================================
@@ -473,7 +479,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (elements.cartFooter) elements.cartFooter.hidden = isEmpty;
     }
 
-    // Cart event listeners
     if (elements.cartItems) {
         elements.cartItems.addEventListener("click", event => {
             const button = event.target.closest("[data-cart-action]");
@@ -531,7 +536,6 @@ document.addEventListener("DOMContentLoaded", () => {
         `).join("");
     }
 
-    // Wishlist event listeners
     if (elements.productGrid) {
         elements.productGrid.addEventListener("click", event => {
             const button = event.target.closest("[data-action]");
@@ -623,30 +627,86 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     /* =====================================================
-       CHECKOUT
+       CHECKOUT — Profile Data se Direct Order
     ===================================================== */
 
-    function openCheckout() {
+    async function openCheckout() {
+        if (!currentUser) {
+            showToast('Please login to continue', '🔑');
+            openAuthModal('login');
+            return;
+        }
+
         const subtotal = getCartSubtotal();
         if (subtotal <= 0) {
             showToast("Your cart is empty", "!");
             return;
         }
+
+        const name = (currentCustomer?.name || '').trim();
+        const phone = (currentCustomer?.phone || '').replace(/[^\d]/g, '').slice(0, 10);
+        const address = (currentCustomer?.address || '').trim();
+        const email = currentCustomer?.email || currentUser?.email || '';
+
+        if (name.length < 2 || phone.length !== 10 || address.length < 10) {
+            closeCart();
+            showToast('Please complete your profile first (name, phone, address)', '⚠️');
+            setTimeout(() => openProfile(), 500);
+            return;
+        }
+
         closeCart();
-        if (!elements.checkoutModal) return;
-        elements.checkoutModal.hidden = false;
-        if (elements.checkoutTotal) {
-            elements.checkoutTotal.textContent = formatPrice(subtotal + getDeliveryFee(subtotal));
+
+        const cartDetails = getCartDetails();
+        const delivery = getDeliveryFee(subtotal);
+        const total = subtotal + delivery;
+
+        const orderData = {
+            customerName: name,
+            customerEmail: email,
+            customerPhone: phone,
+            customerAddress: address,
+            customerNotes: '',
+            paymentMethod: 'cod',
+            items: cartDetails.map(item => ({
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                image: item.image || ''
+            })),
+            subtotal: subtotal,
+            deliveryFee: delivery,
+            discount: 0,
+            total: total
+        };
+
+        const itemList = cartDetails.map(i => `• ${i.name} × ${i.quantity}`).join('\n');
+        const confirmMsg = `📦 Place order with your saved details?\n\n${itemList}\n\n💰 Subtotal: ₹${subtotal}\n🚚 Delivery: ${delivery === 0 ? 'FREE' : '₹' + delivery}\n💵 Total: ₹${total}\n\n👤 ${name}\n📞 ${phone}\n📍 ${address}\n\nOK = Place Order`;
+
+        if (!confirm(confirmMsg)) {
+            return;
         }
-        if (elements.checkoutMessage) {
-            elements.checkoutMessage.textContent = "";
-            elements.checkoutMessage.className = "form-message";
+
+        try {
+            showToast('Placing order...', '⏳');
+
+            const order = await placeOrderViaBackend(orderData);
+
+            state.cart = [];
+            saveStorage(STORAGE_KEYS.cart, state.cart);
+            updateCartUI();
+
+            showToast(`Order ${order.orderNumber} placed! ✅`, '✅');
+
+            setTimeout(() => {
+                showOrderTracking(order.orderNumber);
+            }, 600);
+
+        } catch (error) {
+            console.error('Order placement error:', error);
+            showToast(error.message || 'Order failed. Please try again.', '❌');
         }
-        document.body.style.overflow = "hidden";
-        setTimeout(() => {
-            const input = document.getElementById("checkoutName");
-            if (input) input.focus();
-        }, 50);
     }
 
     function closeCheckout() {
@@ -696,99 +756,46 @@ document.addEventListener("DOMContentLoaded", () => {
     if (elements.checkoutForm) {
         elements.checkoutForm.addEventListener("submit", async (event) => {
             event.preventDefault();
-
             const submitBtn = event.target.querySelector('.btn-primary');
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Placing Order...';
             }
-
             try {
-                const nameInput = document.getElementById("checkoutName");
-                const phoneInput = document.getElementById("checkoutPhone");
-                const addressInput = document.getElementById("checkoutAddress");
-                const paymentInput = document.getElementById("paymentMethod");
-                const emailInput = document.getElementById("checkoutEmail");
-
-                const name = nameInput?.value?.trim() || "";
-                const phone = (phoneInput?.value || "").replace(/[^\d]/g, "").slice(0, 10);
-                const address = addressInput?.value?.trim() || "";
-                const email = emailInput?.value?.trim() || "";
-                const paymentMethod = paymentInput?.value || "cod";
+                const name = document.getElementById("checkoutName")?.value?.trim() || "";
+                const phone = (document.getElementById("checkoutPhone")?.value || "").replace(/[^\d]/g, "").slice(0, 10);
+                const address = document.getElementById("checkoutAddress")?.value?.trim() || "";
+                const paymentMethod = document.getElementById("paymentMethod")?.value || "cod";
 
                 const cartDetails = getCartDetails();
-
-                if (!cartDetails.length) {
-                    showCheckoutMessage("Your cart is empty.", true);
-                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Place Order'; }
-                    return;
-                }
-
-                if (name.length < 2) {
-                    showCheckoutMessage("Please enter your full name.", true);
-                    nameInput?.focus();
-                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Place Order'; }
-                    return;
-                }
-
-                if (!/^\d{10}$/.test(phone)) {
-                    showCheckoutMessage("Please enter a valid 10-digit phone number.", true);
-                    phoneInput?.focus();
-                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Place Order'; }
-                    return;
-                }
-
-                if (address.length < 10) {
-                    showCheckoutMessage("Please enter a complete delivery address.", true);
-                    addressInput?.focus();
-                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Place Order'; }
-                    return;
-                }
-
                 const subtotal = cartDetails.reduce((sum, item) => sum + item.lineTotal, 0);
                 const delivery = getDeliveryFee(subtotal);
                 const total = subtotal + delivery;
 
-                const orderData = {
+                const order = await placeOrderViaBackend({
                     customerName: name,
-                    customerEmail: email || '',
+                    customerEmail: '',
                     customerPhone: phone,
                     customerAddress: address,
                     customerNotes: '',
                     paymentMethod: paymentMethod,
                     items: cartDetails.map(item => ({
-                        id: item.id,
-                        name: item.name,
-                        price: item.price,
-                        quantity: item.quantity,
-                        image: item.image || ''
+                        id: item.id, name: item.name, price: item.price,
+                        quantity: item.quantity, image: item.image || ''
                     })),
-                    subtotal: subtotal,
-                    deliveryFee: delivery,
-                    discount: 0,
-                    total: total
-                };
-
-                showCheckoutMessage("Placing your order...", false);
-
-                const order = await placeOrderViaBackend(orderData);
+                    subtotal, deliveryFee: delivery, discount: 0, total
+                });
 
                 state.cart = [];
                 saveStorage(STORAGE_KEYS.cart, state.cart);
                 updateCartUI();
 
                 closeCheckout();
-                showToast(`Order ${order.orderNumber} placed successfully! ✅`, '✅');
-
-                setTimeout(() => {
-                    showOrderTracking(order.orderNumber);
-                }, 600);
-
+                showToast(`Order ${order.orderNumber} placed! ✅`, '✅');
+                setTimeout(() => showOrderTracking(order.orderNumber), 600);
                 elements.checkoutForm.reset();
-
             } catch (error) {
-                console.error('Order placement error:', error);
-                showCheckoutMessage(error.message || 'Failed to place order. Please try again.', true);
+                showCheckoutMessage(error.message || 'Failed to place order.', true);
                 showToast('Order failed ❌', '❌');
             } finally {
                 const submitBtn = document.querySelector('#checkoutForm .btn-primary');
@@ -1084,12 +1091,33 @@ document.addEventListener("DOMContentLoaded", () => {
         if (displayName) displayName.textContent = name || 'User';
         if (displayEmail) displayEmail.textContent = email || '';
 
-        // ✅ Load profile image with localStorage fallback
         const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E👤%3C/text%3E%3C/svg%3E";
         const cachedImage = currentUser ? localStorage.getItem('rudramart_avatar_' + currentUser.id) : null;
         const profileImage = currentCustomer?.profile_image || cachedImage;
         if (avatarImg) {
             avatarImg.src = profileImage || DEFAULT_AVATAR;
+        }
+
+        // ✅ Logout button add करें profile drawer में (सिर्फ एक बार)
+        let logoutBtn = document.getElementById('profileLogoutBtnDynamic');
+        if (!logoutBtn) {
+            logoutBtn = document.createElement('button');
+            logoutBtn.id = 'profileLogoutBtnDynamic';
+            logoutBtn.type = 'button';
+            logoutBtn.textContent = '🚪 Logout';
+            logoutBtn.style.cssText = 'display:block; width:100%; margin-top:20px; padding:14px; border:none; border-radius:12px; background:#ef4444; color:#fff; font-weight:700; font-size:0.95rem; cursor:pointer; transition:0.2s;';
+
+            logoutBtn.addEventListener('mouseenter', () => logoutBtn.style.background = '#dc2626');
+            logoutBtn.addEventListener('mouseleave', () => logoutBtn.style.background = '#ef4444');
+
+            logoutBtn.addEventListener('click', async function () {
+                if (!confirm('Logout from your account?')) return;
+                closeProfile();
+                await signOut();
+            });
+
+            const profileBody = profileDrawer.querySelector('.profile-body');
+            if (profileBody) profileBody.appendChild(logoutBtn);
         }
 
         profileDrawer.classList.add('open');
@@ -1121,21 +1149,86 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('profileOverlay')?.addEventListener('click', closeProfile);
     document.getElementById('closeProfile')?.addEventListener('click', closeProfile);
 
+    document.getElementById('userAvatarBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openProfile();
+    });
+
     document.getElementById('userInfo')?.addEventListener('click', (e) => {
         if (e.target.closest('#logoutBtn')) return;
+        if (e.target.closest('#userAvatarBtn')) return;
         openProfile();
     });
 
     /* =====================================================
-       PROFILE IMAGE UPLOAD
+       IMAGE COMPRESSION HELPER
+    ===================================================== */
+
+    function compressImage(file, maxWidth = 800, quality = 0.85) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                const img = new Image();
+
+                img.onload = () => {
+                    let { width, height } = img;
+
+                    if (width > maxWidth || height > maxWidth) {
+                        if (width > height) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        } else {
+                            width = Math.round((width * maxWidth) / height);
+                            height = maxWidth;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob(
+                        (blob) => {
+                            if (!blob) {
+                                reject(new Error('Compression failed'));
+                                return;
+                            }
+                            const compressedFile = new File(
+                                [blob],
+                                file.name.replace(/\.[^/.]+$/, '.jpg'),
+                                { type: 'image/jpeg', lastModified: Date.now() }
+                            );
+                            resolve(compressedFile);
+                        },
+                        'image/jpeg',
+                        quality
+                    );
+                };
+
+                img.onerror = () => reject(new Error('Invalid image'));
+                img.src = e.target.result;
+            };
+
+            reader.onerror = () => reject(new Error('Could not read file'));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    /* =====================================================
+       PROFILE IMAGE UPLOAD — 10MB + Auto-Compress
     ===================================================== */
 
     document.getElementById('profileImageInput')?.addEventListener('change', async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (file.size > 2 * 1024 * 1024) {
-            showToast('Image must be under 2 MB', '⚠️');
+        if (file.size > 10 * 1024 * 1024) {
+            showToast('Image must be under 10 MB', '⚠️');
             return;
         }
         if (!file.type.startsWith('image/')) {
@@ -1149,21 +1242,24 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         try {
-            showToast('Uploading image...', '⏳');
+            showToast('Processing image...', '⏳');
+
+            const compressedFile = await compressImage(file, 800, 0.85);
 
             const reader = new FileReader();
             reader.onload = (ev) => {
                 const avatarImg = document.getElementById('profileAvatarImg');
                 if (avatarImg) avatarImg.src = ev.target.result;
             };
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(compressedFile);
 
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`;
+            showToast('Uploading image...', '⏳');
+
+            const fileName = `${currentUser.id}-${Date.now()}.jpg`;
 
             const { error: uploadError } = await supabaseClient.storage
                 .from('avatars')
-                .upload(fileName, file, { upsert: true });
+                .upload(fileName, compressedFile, { upsert: true, contentType: 'image/jpeg' });
 
             if (uploadError) throw uploadError;
 
@@ -1182,14 +1278,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (currentCustomer) currentCustomer.profile_image = publicUrl;
 
-            // ✅ Cache image locally so it persists across auth refresh
             if (currentUser) {
                 localStorage.setItem('rudramart_avatar_' + currentUser.id, publicUrl);
             }
 
-            const navAvatar = document.querySelector('.user-avatar');
-            if (navAvatar) {
-                navAvatar.innerHTML = `<img src="${publicUrl}" class="user-avatar-img" alt="Profile" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">`;
+            const avatarIcon = document.getElementById('userAvatarIcon');
+            if (avatarIcon) {
+                avatarIcon.innerHTML = `<img src="${publicUrl}" class="user-avatar-img" alt="Profile">`;
             }
 
             showToast('Profile photo updated ✅', '✅');
@@ -1725,11 +1820,19 @@ document.addEventListener("DOMContentLoaded", () => {
     function applyTheme(theme) {
         const dark = theme === "dark";
         document.body.classList.toggle("dark-theme", dark);
+        document.documentElement.classList.remove('dark-theme-preload');
         if (elements.themeToggle) {
             elements.themeToggle.textContent = dark ? "☀️ Light Mode" : "🌙 Dark Mode";
         }
         state.theme = dark ? "dark" : "light";
-        saveStorage(STORAGE_KEYS.theme, state.theme);
+
+        try {
+            sessionStorage.setItem('RudraMart_theme_session', state.theme);
+        } catch (e) {}
+
+        try {
+            localStorage.removeItem('RudraMart_theme');
+        } catch (e) {}
     }
 
     if (elements.themeToggle) {
@@ -1988,7 +2091,6 @@ async function signIn(email, password) {
         phone: ""
     };
 
-    // ✅ Restore cached avatar
     const cachedAvatar = localStorage.getItem('rudramart_avatar_' + data.user.id);
     if (cachedAvatar && !currentCustomer.profile_image) {
         currentCustomer.profile_image = cachedAvatar;
@@ -2068,7 +2170,6 @@ async function initAuth() {
                 phone: ""
             };
 
-            // ✅ Restore cached avatar for existing session
             const cachedAvatar = localStorage.getItem('rudramart_avatar_' + session.user.id);
             if (cachedAvatar && !currentCustomer.profile_image) {
                 currentCustomer.profile_image = cachedAvatar;
@@ -2082,12 +2183,11 @@ async function initAuth() {
 }
 
 // ============================================================
-// AUTH UI
+// AUTH UI — Avatar only in navbar + Mobile My Profile link
 // ============================================================
 
 function updateAuthUI() {
 
-    // ✅ LOGIN GATE — show/hide based on auth
     const gate = document.getElementById('loginGate');
     if (gate) {
         if (currentUser) {
@@ -2104,33 +2204,75 @@ function updateAuthUI() {
     const userName = document.getElementById("userName");
     const mobileAuthLinks = document.getElementById("mobileAuthLinks");
     const mobileUserInfo = document.getElementById("mobileUserInfo");
-    const mobileUserName = document.getElementById("mobileUserName");
 
     if (currentUser) {
         if (loginBtn) loginBtn.style.display = "none";
 
         if (userInfo) {
             userInfo.style.display = "flex";
+
+            const avatarIcon = document.getElementById('userAvatarIcon');
+            const cachedAvatar = localStorage.getItem('rudramart_avatar_' + currentUser.id);
+            const imgUrl = currentCustomer?.profile_image || cachedAvatar;
+            if (avatarIcon) {
+                if (imgUrl) {
+                    avatarIcon.innerHTML = `<img src="${imgUrl}" class="user-avatar-img" alt="Profile">`;
+                } else {
+                    avatarIcon.textContent = "👤";
+                }
+            }
+
             if (userName) {
                 userName.textContent =
                     currentCustomer?.name || currentUser.email || "User";
             }
         }
 
+        // ✅ Mobile menu में पुराना user info + logout hide करें
         if (mobileAuthLinks) mobileAuthLinks.style.display = "none";
+        if (mobileUserInfo) mobileUserInfo.style.display = "none";
 
-        if (mobileUserInfo) {
-            mobileUserInfo.style.display = "block";
-            if (mobileUserName) {
-                mobileUserName.textContent =
-                    currentCustomer?.name || currentUser.email || "User";
-            }
-        }
+        // ✅ Mobile menu में "My Profile" link add करें
+        addMobileProfileLink();
+
     } else {
         if (loginBtn) loginBtn.style.display = "inline-flex";
         if (userInfo) userInfo.style.display = "none";
         if (mobileAuthLinks) mobileAuthLinks.style.display = "block";
         if (mobileUserInfo) mobileUserInfo.style.display = "none";
+
+        // Logged out state में My Profile link हटाएं
+        const existing = document.getElementById('mobileProfileLinkItem');
+        if (existing) existing.remove();
+    }
+}
+
+/* ✅ Mobile menu में My Profile link dynamically add करें */
+function addMobileProfileLink() {
+    const mobileMenu = document.getElementById('mobileMenu');
+    if (!mobileMenu) return;
+
+    if (document.getElementById('mobileProfileLinkItem')) return;
+
+    const link = document.createElement('a');
+    link.href = '#';
+    link.id = 'mobileProfileLinkItem';
+    link.setAttribute('data-mobile-link', 'profile');
+    link.textContent = '👤 My Profile';
+    link.style.cssText = 'display:block; padding:14px 20px; font-weight:600; color:inherit; text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.1);';
+
+    link.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (window.RudraMartCloseMobileMenu) window.RudraMartCloseMobileMenu();
+        openProfile();
+    });
+
+    // mobileAuthLinks के ठीक पहले insert करें
+    const mobileAuthLinks = document.getElementById('mobileAuthLinks');
+    if (mobileAuthLinks && mobileAuthLinks.parentNode) {
+        mobileAuthLinks.parentNode.insertBefore(link, mobileAuthLinks);
+    } else {
+        mobileMenu.appendChild(link);
     }
 }
 
@@ -2184,7 +2326,6 @@ function closeAuthModalFn() {
 
 document.addEventListener("DOMContentLoaded", async () => {
 
-    // ✅ LOGIN GATE BUTTON — opens auth modal
     const loginGateBtn = document.getElementById('loginGateBtn');
     if (loginGateBtn) {
         loginGateBtn.addEventListener('click', () => {
@@ -2192,7 +2333,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // Initialize Supabase
     if (!initializeSupabase()) return;
 
     document.getElementById("loginNavBtn")?.addEventListener("click", () => {
@@ -2232,7 +2372,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     });
 
-    // LOGIN FORM
     document.getElementById("loginForm")?.addEventListener("submit", async event => {
         event.preventDefault();
         const form = event.target;
@@ -2283,7 +2422,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
-    // SIGNUP FORM
     document.getElementById("signupForm")?.addEventListener("submit", async event => {
         event.preventDefault();
         const form = event.target;
@@ -2358,10 +2496,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
-    // DESKTOP LOGOUT
     document.getElementById("logoutBtn")?.addEventListener("click", signOut);
 
-    // SUPABASE AUTH STATE LISTENER
+    document.getElementById('profileLogoutBtn')?.addEventListener('click', async () => {
+        const pd = document.getElementById('profileDrawer');
+        const po = document.getElementById('profileOverlay');
+        if (pd) { pd.classList.remove('open'); pd.setAttribute('aria-hidden', 'true'); }
+        if (po) po.hidden = true;
+        document.body.style.overflow = '';
+        await signOut();
+    });
+
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
         console.log("Auth state:", event);
 
@@ -2390,7 +2535,6 @@ document.addEventListener("DOMContentLoaded", async () => {
                     phone: ""
                 };
 
-                // ✅ Restore cached avatar
                 const cachedAvatar = localStorage.getItem('rudramart_avatar_' + session.user.id);
                 if (cachedAvatar && !currentCustomer.profile_image) {
                     currentCustomer.profile_image = cachedAvatar;
@@ -2406,6 +2550,5 @@ document.addEventListener("DOMContentLoaded", async () => {
         updateAuthUI();
     });
 
-    // LOAD EXISTING SESSION
     await initAuth();
 });
